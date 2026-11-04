@@ -1,18 +1,29 @@
 // SteamVR device-battery probe (HMD / controllers / trackers).
 //
-// Reads the standard OpenVR battery properties that VRCOSC's SteamVR module
-// also uses — Prop_DeviceProvidesBatteryStatus_Bool (1004),
-// Prop_DeviceBatteryPercentage_Float (1005), Prop_DeviceIsCharging_Bool
-// (1003) — via the same PowerShell + inline-C# + P/Invoke bridge the HMD
-// activity probe uses (vrActivity.ts). ONLY works while SteamVR is running
-// (PCVR). A standalone Quest exposes none of this to the PC.
+// Reads the standard OpenVR battery properties — the same approach VRCOSC and
+// MagicChatbox use: a device counts only when Prop_DeviceProvidesBatteryStatus
+// says it reports battery AND Prop_DeviceBatteryPercentage reads back without
+// an error. Quest Touch controllers over Link answer UnknownProperty, so they
+// are left out instead of showing a fake 0% (which also fired false
+// low-battery toasts). The Quest headset itself does report over Link.
 //
-// FnTable indices (IVRSystem_022, verified against the activity probe which
-// keys off index 15): 19 = GetTrackedDeviceClass, 20 = IsTrackedDeviceConnected,
-// 21 = GetBoolTrackedDeviceProperty, 22 = GetFloatTrackedDeviceProperty.
-// Device classes: 1 = HMD, 2 = Controller, 3 = GenericTracker.
+// Runs through a long-lived PowerShell + inline-C# helper (compiled once, like
+// the overlay harness) that answers one JSON line per request. Each request
+// still attaches to SteamVR as a Background app and detaches again, so a
+// SteamVR shutdown is never held up by us. ONLY works while SteamVR runs.
+//
+// FnTable indices are for the IVRSystem_022 table we request (checked against
+// Valve's openvr_api.cs; the activity probe keys off 15): 18 =
+// GetControllerRoleForTrackedDeviceIndex, 19 = GetTrackedDeviceClass, 20 =
+// IsTrackedDeviceConnected, 21 = GetBool…, 22 = GetFloat…, 27 = GetString….
+//
+// Names: controllers use their Left/Right role; trackers use the body role
+// set in SteamVR → Manage Trackers (steamvr.vrsettings "trackers", keyed by
+// serial), falling back to SlimeVR's "human://LEFT_FOOT" style serials.
 
-import { spawn } from 'child_process';
+import { spawn, type ChildProcessWithoutNullStreams } from 'child_process';
+import { promises as fsp } from 'fs';
+import path from 'path';
 import log from 'electron-log';
 import type { BatteryDevice, BatteryStatus } from '../shared/types';
 import { findRuntimeDir } from './vrActivity';
@@ -31,16 +42,17 @@ public static class UvVrBat {
   [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
   static extern IntPtr LoadLibraryEx(string lpFileName, IntPtr hReservedNull, uint dwFlags);
 
-  const int APP_TYPE = 3; // Background — read-only utility, won't fight VRChat.
+  const int APP_TYPE = 3; // Background — read-only, never launches SteamVR or fights VRChat.
   const uint LOAD_WITH_ALTERED_SEARCH_PATH = 0x00000008;
   const int MAX_DEVICES = 64;
-  // ETrackedDeviceProperty (correct OpenVR values — the earlier 1003/1004/1005
-  // were RenderModelName/WillDriftInYaw/ManufacturerName, which is why the
-  // percentage read back 0). Battery percentage is 0..1.
-  const int PROP_PROVIDES_BATTERY = 1026; // Prop_DeviceProvidesBatteryStatus_Bool
-  const int PROP_BATTERY_PCT = 1012;      // Prop_DeviceBatteryPercentage_Float
+  // ETrackedDeviceProperty values from Valve's openvr_api.cs.
+  const int PROP_SERIAL = 1002;           // Prop_SerialNumber_String
   const int PROP_IS_CHARGING = 1011;      // Prop_DeviceIsCharging_Bool
+  const int PROP_BATTERY_PCT = 1012;      // Prop_DeviceBatteryPercentage_Float (0..1)
+  const int PROP_PROVIDES_BATTERY = 1026; // Prop_DeviceProvidesBatteryStatus_Bool
 
+  [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+  delegate int GetRoleFn(uint deviceIndex);
   [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
   delegate int GetClassFn(uint deviceIndex);
   [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -51,23 +63,42 @@ public static class UvVrBat {
   delegate bool GetBoolPropFn(uint deviceIndex, int prop, out int err);
   [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
   delegate float GetFloatPropFn(uint deviceIndex, int prop, out int err);
+  [UnmanagedFunctionPointer(CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+  delegate uint GetStringPropFn(uint deviceIndex, int prop, StringBuilder value, uint size, out int err);
+
+  static bool loaded;
 
   static IntPtr Slot(IntPtr fnt, int i) { return Marshal.ReadIntPtr(fnt, i * IntPtr.Size); }
+  static string Esc(string s) {
+    return (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\r", " ").Replace("\n", " ");
+  }
+  static string Fail(string why) { return "{\"available\":false,\"error\":\"" + Esc(why) + "\"}"; }
 
-  public static string Read(string runtimeDir) {
-    if (string.IsNullOrEmpty(runtimeDir))
-      return "{\"available\":false,\"error\":\"runtime dir missing\"}";
-    string dll = Path.Combine(runtimeDir, "openvr_api.dll");
-    if (!File.Exists(dll)) return "{\"available\":false,\"error\":\"openvr_api.dll missing\"}";
+  // One request per stdin line (the SteamVR runtime dir) -> one JSON line.
+  // "QUIT" or EOF (the app exited) ends the loop.
+  public static void Run() {
+    string line;
+    while ((line = Console.In.ReadLine()) != null) {
+      if (line == "QUIT") break;
+      string json;
+      try { json = Read(line.Trim()); } catch (Exception ex) { json = Fail("read: " + ex.Message); }
+      Console.Out.WriteLine(json);
+      Console.Out.Flush();
+    }
+  }
 
-    IntPtr h = LoadLibraryEx(dll, IntPtr.Zero, LOAD_WITH_ALTERED_SEARCH_PATH);
-    if (h == IntPtr.Zero)
-      return "{\"available\":false,\"error\":\"LoadLibraryEx err=" + Marshal.GetLastWin32Error() + "\"}";
+  static string Read(string runtimeDir) {
+    if (!loaded) {
+      string dll = Path.Combine(runtimeDir, "openvr_api.dll");
+      if (!File.Exists(dll)) return Fail("openvr_api.dll missing");
+      if (LoadLibraryEx(dll, IntPtr.Zero, LOAD_WITH_ALTERED_SEARCH_PATH) == IntPtr.Zero)
+        return Fail("LoadLibraryEx err=" + Marshal.GetLastWin32Error());
+      loaded = true;
+    }
 
     int err;
-    try { VR_InitInternal2(out err, APP_TYPE, null); }
-    catch (Exception ex) { return "{\"available\":false,\"error\":\"init: " + ex.Message.Replace("\"","'") + "\"}"; }
-    if (err != 0) return "{\"available\":false,\"error\":\"init err=" + err + " (SteamVR not running?)\"}";
+    VR_InitInternal2(out err, APP_TYPE, null);
+    if (err != 0) return Fail("init err=" + err + " (SteamVR not running?)");
 
     try {
       IntPtr fnt = IntPtr.Zero;
@@ -75,56 +106,48 @@ public static class UvVrBat {
         fnt = VR_GetGenericInterface(v, out err);
         if (fnt != IntPtr.Zero && err == 0) break;
       }
-      if (fnt == IntPtr.Zero) return "{\"available\":false,\"error\":\"no IVRSystem fntable\"}";
+      if (fnt == IntPtr.Zero) return Fail("no IVRSystem fntable");
 
+      var getRole = (GetRoleFn)Marshal.GetDelegateForFunctionPointer(Slot(fnt,18), typeof(GetRoleFn));
       var getClass = (GetClassFn)Marshal.GetDelegateForFunctionPointer(Slot(fnt,19), typeof(GetClassFn));
       var isConn = (IsConnectedFn)Marshal.GetDelegateForFunctionPointer(Slot(fnt,20), typeof(IsConnectedFn));
       var getBool = (GetBoolPropFn)Marshal.GetDelegateForFunctionPointer(Slot(fnt,21), typeof(GetBoolPropFn));
       var getFloat = (GetFloatPropFn)Marshal.GetDelegateForFunctionPointer(Slot(fnt,22), typeof(GetFloatPropFn));
+      var getString = (GetStringPropFn)Marshal.GetDelegateForFunctionPointer(Slot(fnt,27), typeof(GetStringPropFn));
 
-      var sb = new StringBuilder();
+      var sb = new StringBuilder("{\"available\":true,\"devices\":[");
       var dbg = new StringBuilder();
-      // VERIFY: read the HMD display frequency (Prop_DisplayFrequency_Float=2002)
-      // — a property the HMD definitely has. If this returns ~90 with e0, the
-      // GetFloat index/signature is CORRECT and a battery e4 means the driver
-      // (Quest over Link) simply doesn't expose battery. If this also e4's, the
-      // FnTable index is wrong.
-      try {
-        int eF;
-        float freq = getFloat(0, 2002, out eF);
-        dbg.Append("freq@2002=" + freq.ToString("0.0") + ":e" + eF + " | ");
-      } catch (Exception vex) { dbg.Append("freq-threw:" + vex.Message.Replace("\"","'") + " | "); }
-      sb.Append("{\"available\":true,\"devices\":[");
       bool first = true;
-      int ctrl = 0, trk = 0, connCount = 0;
+      int connCount = 0;
       for (uint i = 0; i < MAX_DEVICES; i++) {
         try {
           if (!isConn(i)) continue;
           connCount++;
-          int cls = getClass(i);            // 1 HMD, 2 Controller, 3 Tracker
-          // Read the battery percentage + its error code (ETrackedPropertyError:
-          // 0=Success 1=WrongDataType 4=UnknownProperty 5=InvalidDevice ...).
-          int ePct = -1, eProv = -1;
-          float pct = 0f;
-          bool provides = false, charging = false;
-          try { pct = getFloat(i, PROP_BATTERY_PCT, out ePct); } catch { ePct = -99; }
-          try { provides = getBool(i, PROP_PROVIDES_BATTERY, out eProv); } catch { eProv = -99; }
-          try { int ec; charging = getBool(i, PROP_IS_CHARGING, out ec); } catch {}
-          // Diagnostic: class, provides flag, raw pct, and the pct error code.
-          if (dbg.Length > 0) dbg.Append(" ");
-          dbg.Append("i" + i + ":c" + cls + ":prov" + (provides ? 1 : 0) + ":pct" + pct.ToString("0.00") + ":e" + ePct);
-          // Show controllers/trackers always; the HMD only when it reports one.
-          bool want = provides || cls == 2 || cls == 3;
-          if (!want) continue;
-          string kind = cls == 1 ? "hmd" : cls == 2 ? "controller" : cls == 3 ? "tracker" : "other";
-          string name = cls == 1 ? "Headset" : cls == 2 ? ("Controller " + (++ctrl)) : cls == 3 ? ("Tracker " + (++trk)) : ("Device " + i);
+          int cls = getClass(i); // 1 HMD, 2 Controller, 3 GenericTracker
+          if (cls < 1 || cls > 3) continue;
+          // ETrackedPropertyError: 0 = Success, 4 = UnknownProperty, ...
+          int eProv, ePct, eChg;
+          bool provides = getBool(i, PROP_PROVIDES_BATTERY, out eProv);
+          float pct = getFloat(i, PROP_BATTERY_PCT, out ePct);
+          bool charging = getBool(i, PROP_IS_CHARGING, out eChg);
+          dbg.Append(" i" + i + ":c" + cls + ":prov" + (provides ? 1 : 0) + ":pct" + pct.ToString("0.00") + ":e" + ePct);
+          if (!provides || eProv != 0 || ePct != 0) continue;
+
+          int role = cls == 2 ? getRole(i) : 0; // ETrackedControllerRole: 1 Left, 2 Right
+          var serial = new StringBuilder(256);
+          int eSer;
+          getString(i, PROP_SERIAL, serial, (uint)serial.Capacity, out eSer);
+          string kind = cls == 1 ? "hmd" : cls == 2 ? "controller" : "tracker";
+          int percent = (int)Math.Round(Math.Max(0f, Math.Min(1f, pct)) * 100.0);
           if (!first) sb.Append(",");
           first = false;
-          int pcti = (int)Math.Round(pct * 100.0);
-          sb.Append("{\"kind\":\"" + kind + "\",\"name\":\"" + name + "\",\"percent\":" + pcti + ",\"charging\":" + (charging ? "true" : "false") + "}");
+          sb.Append("{\"kind\":\"" + kind + "\",\"role\":" + role
+            + ",\"serial\":\"" + Esc(eSer == 0 ? serial.ToString() : "") + "\""
+            + ",\"percent\":" + percent
+            + ",\"charging\":" + (charging && eChg == 0 ? "true" : "false") + "}");
         } catch {}
       }
-      sb.Append("],\"debug\":\"conn=" + connCount + " [" + dbg.ToString() + "]\"}");
+      sb.Append("],\"debug\":\"conn=" + connCount + dbg.ToString() + "\"}");
       return sb.ToString();
     } finally {
       try { VR_ShutdownInternal(); } catch {}
@@ -139,29 +162,138 @@ try {
   Add-Type -TypeDefinition @'
 ${CS_SOURCE}
 '@ -Language CSharp -ReferencedAssemblies System.dll | Out-Null
-  $rt = $env:UVS_OVR_RUNTIME
-  if ([string]::IsNullOrEmpty($rt)) { '{"available":false,"error":"runtime empty"}' }
-  else { [UvVrBat]::Read($rt) }
+  [UvVrBat]::Run()
 } catch {
-  '{"available":false,"error":"ps: ' + ($_.Exception.Message -replace '"',"'") + '"}'
+  [Console]::Out.WriteLine('{"available":false,"error":"ps: ' + ($_.Exception.Message -replace '["\\r\\n]',' ') + '"}')
 }
 `;
 
+interface RawDevice {
+  kind: 'hmd' | 'controller' | 'tracker';
+  /** ETrackedControllerRole for controllers: 1 = left, 2 = right. */
+  role: number;
+  serial: string;
+  percent: number;
+  charging: boolean;
+}
+
 interface RawBattery {
   available: boolean;
-  devices?: BatteryDevice[];
+  devices?: RawDevice[];
   error?: string;
   debug?: string;
+}
+
+/** "LeftFoot" / "LEFT_FOOT" → "Left foot". */
+function humanize(id: string): string {
+  const words = id
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .toLowerCase()
+    .trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** steamvr.vrsettings tracker role → label. "TrackerRole_Waist" → "Waist";
+ *  a handed tracker ("TrackerRole_Handed,TrackedControllerRole_LeftHand")
+ *  → "Left hand". Unassigned roles → null. */
+function roleLabel(role: string): string | null {
+  const hand = role.match(/TrackedControllerRole_(\w+)/)?.[1];
+  if (hand) return humanize(hand);
+  const r = role.match(/TrackerRole_(\w+)/)?.[1];
+  if (!r || r === 'None' || r === 'Handed' || r === 'Disabled') return null;
+  return humanize(r);
+}
+
+/** SteamVR's config dirs, from openvrpaths.vrpath (what SteamVR itself uses),
+ *  else <Steam>/config next to the runtime. */
+async function steamVrConfigDirs(runtimeDir: string): Promise<string[]> {
+  const dirs: string[] = [];
+  try {
+    const vrpath = path.join(process.env.LOCALAPPDATA ?? '', 'openvr', 'openvrpaths.vrpath');
+    const cfg = JSON.parse(await fsp.readFile(vrpath, 'utf8')) as { config?: string[] };
+    dirs.push(...(cfg.config ?? []));
+  } catch {
+    /* fall through to the runtime-relative guess */
+  }
+  dirs.push(path.resolve(runtimeDir, '..', '..', '..', 'config'));
+  return dirs;
+}
+
+const ROLES_TTL_MS = 60_000;
+let rolesCache: { at: number; map: Map<string, string> } | null = null;
+
+/** serial (lower-case) → tracker role, from steamvr.vrsettings "trackers"
+ *  (keys look like "/devices/slimevr/human://WAIST"). */
+async function trackerRoles(runtimeDir: string): Promise<Map<string, string>> {
+  if (rolesCache && Date.now() - rolesCache.at < ROLES_TTL_MS) return rolesCache.map;
+  const map = new Map<string, string>();
+  for (const dir of await steamVrConfigDirs(runtimeDir)) {
+    try {
+      const raw = await fsp.readFile(path.join(dir, 'steamvr.vrsettings'), 'utf8');
+      const trackers = (JSON.parse(raw) as { trackers?: Record<string, string> }).trackers ?? {};
+      for (const [key, role] of Object.entries(trackers)) {
+        map.set(key.replace(/^\/devices\/[^/]+\//, '').toLowerCase(), role);
+      }
+      break;
+    } catch {
+      /* try the next dir */
+    }
+  }
+  rolesCache = { at: Date.now(), map };
+  return map;
+}
+
+function deviceName(d: RawDevice, roles: Map<string, string>): string {
+  if (d.kind === 'hmd') return 'Headset';
+  if (d.kind === 'controller') {
+    return d.role === 1 ? 'Left controller' : d.role === 2 ? 'Right controller' : 'Controller';
+  }
+  const role = roles.get(d.serial.toLowerCase());
+  const fromRole = role ? roleLabel(role) : null;
+  if (fromRole) return fromRole;
+  const human = d.serial.match(/^human:\/\/(.+)$/i)?.[1];
+  return human ? humanize(human) : 'Tracker';
+}
+
+/** Headset first, then left/right controllers, then trackers (SteamVR order);
+ *  repeated names get numbered ("Tracker 1", "Tracker 2"). */
+function toDevices(raw: RawDevice[], roles: Map<string, string>): BatteryDevice[] {
+  const rank = (d: RawDevice) =>
+    d.kind === 'hmd' ? 0 : d.kind === 'controller' ? 1 + d.role / 10 : 2;
+  const sorted = raw.map((d, i) => ({ d, i })).sort((a, b) => rank(a.d) - rank(b.d) || a.i - b.i);
+  const devices = sorted.map(({ d }) => ({
+    kind: d.kind,
+    name: deviceName(d, roles),
+    percent: d.percent,
+    charging: d.charging,
+  }));
+  const total = new Map<string, number>();
+  for (const d of devices) total.set(d.name, (total.get(d.name) ?? 0) + 1);
+  const seen = new Map<string, number>();
+  for (const d of devices) {
+    if ((total.get(d.name) ?? 0) < 2) continue;
+    const n = (seen.get(d.name) ?? 0) + 1;
+    seen.set(d.name, n);
+    d.name = `${d.name} ${n}`;
+  }
+  return devices;
 }
 
 export class VRBatteryProbe {
   private last: BatteryStatus = { available: false, devices: [] };
   private lastError = '';
+  private lastLogged = '';
   private inflight: Promise<BatteryStatus> | null = null;
   private lastFetchAt = 0;
+  private helper: ChildProcessWithoutNullStreams | null = null;
+  private outBuf = '';
+  private waiting: ((line: string) => void) | null = null;
   // Battery moves slowly, but keep the throttle modest so the panel's
   // "Re-scan" button and 8s poll can actually refresh the reading.
   private static MIN_INTERVAL_MS = 9_000;
+  // The first request also compiles the helper (a few seconds).
+  private static READ_TIMEOUT_MS = 15_000;
 
   current(): BatteryStatus {
     return this.last;
@@ -182,53 +314,116 @@ export class VRBatteryProbe {
       return this.last;
     }
 
-    this.inflight = new Promise<BatteryStatus>((resolve) => {
-      const ps = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', PS_HARNESS], {
-        windowsHide: true,
-        env: { ...process.env, UVS_OVR_RUNTIME: dir },
+    this.inflight = this.request(dir)
+      .then(async (raw): Promise<BatteryStatus> => {
+        if (!raw?.available) return { available: false, devices: [] };
+        const devices = toDevices(raw.devices ?? [], await trackerRoles(dir));
+        return { available: true, devices };
+      })
+      .then((res) => {
+        this.last = res;
+        this.lastFetchAt = Date.now();
+        this.inflight = null;
+        const summary = `devices=${res.devices.map((d) => `${d.name}:${d.percent}`).join(',') || 'none'} err=${this.lastError || 'none'}`;
+        if (summary !== this.lastLogged) {
+          this.lastLogged = summary;
+          log.info(`[vrBattery] ${summary}`);
+        }
+        return res;
       });
-      let out = '';
-      const timer = setTimeout(() => {
+
+    return this.inflight;
+  }
+
+  /** Stop the helper (app quit). It also exits by itself when stdin closes. */
+  dispose(): void {
+    const ps = this.helper;
+    this.helper = null;
+    if (!ps) return;
+    try {
+      ps.stdin.write('QUIT\n');
+    } catch {
+      /* already gone */
+    }
+    setTimeout(() => {
+      try {
         ps.kill();
+      } catch {
+        /* ignore */
+      }
+    }, 800);
+  }
+
+  private ensureHelper(): ChildProcessWithoutNullStreams {
+    if (this.helper) return this.helper;
+    const ps = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', PS_HARNESS], {
+      windowsHide: true,
+    });
+    this.helper = ps;
+    // A write racing the helper's exit must not become an unhandled error.
+    ps.stdin.on('error', (e) => log.warn('[vrBattery] stdin:', e.message));
+    ps.stdout.setEncoding('utf-8');
+    ps.stdout.on('data', (chunk: string) => {
+      this.outBuf += chunk;
+      const lines = this.outBuf.split(/\r?\n/);
+      this.outBuf = lines.pop() ?? '';
+      for (const line of lines) if (line.trim().startsWith('{')) this.settle(line.trim());
+    });
+    ps.stderr.on('data', (d: Buffer) =>
+      log.warn('[vrBattery] stderr:', d.toString().slice(0, 200)),
+    );
+    ps.on('error', (e) => {
+      this.lastError = e.message;
+      this.settle('');
+    });
+    ps.on('close', (code) => {
+      log.info(`[vrBattery] helper exited code=${code}`);
+      if (this.helper === ps) {
+        this.helper = null;
+        this.outBuf = '';
+      }
+      this.settle('');
+    });
+    return ps;
+  }
+
+  private settle(line: string): void {
+    const waiting = this.waiting;
+    this.waiting = null;
+    waiting?.(line);
+  }
+
+  /** One read from the helper; null when it failed or timed out. */
+  private request(runtimeDir: string): Promise<RawBattery | null> {
+    return new Promise((resolve) => {
+      this.lastError = '';
+      const ps = this.ensureHelper();
+      const timer = setTimeout(() => {
+        this.waiting = null;
         this.lastError = 'probe timeout';
-        resolve({ available: false, devices: [] });
-      }, 12_000);
-      ps.stdout.on('data', (d) => (out += d.toString()));
-      ps.on('error', (e) => {
+        if (this.helper === ps) this.helper = null;
+        ps.kill();
+        resolve(null);
+      }, VRBatteryProbe.READ_TIMEOUT_MS);
+      this.waiting = (line) => {
         clearTimeout(timer);
-        this.lastError = e.message;
-        resolve({ available: false, devices: [] });
-      });
-      ps.on('close', () => {
-        clearTimeout(timer);
-        const line =
-          out
-            .split(/\r?\n/)
-            .map((l) => l.trim())
-            .reverse()
-            .find((l) => l.startsWith('{')) ?? '';
+        if (!line) {
+          this.lastError ||= 'helper exited';
+          resolve(null);
+          return;
+        }
         try {
           const parsed = JSON.parse(line) as RawBattery;
           // Prefer an explicit error; otherwise surface the debug trace so
           // the panel can show what SteamVR reported even when it "works".
           this.lastError = parsed.error ?? parsed.debug ?? '';
-          resolve({
-            available: !!parsed.available,
-            devices: Array.isArray(parsed.devices) ? parsed.devices : [],
-          });
+          resolve(parsed);
         } catch {
-          this.lastError = line ? `bad json: ${line.slice(0, 120)}` : 'no output';
-          resolve({ available: false, devices: [] });
+          this.lastError = `bad json: ${line.slice(0, 120)}`;
+          resolve(null);
         }
-      });
-    }).then((res) => {
-      this.last = res;
-      this.lastFetchAt = Date.now();
-      this.inflight = null;
-      log.info(`[vrBattery] devices=${res.devices.length} err=${this.lastError || 'none'}`);
-      return res;
+      };
+      ps.stdin.write(`${runtimeDir}\n`);
     });
-
-    return this.inflight;
   }
 }

@@ -1,14 +1,13 @@
 // Battery reader — VR devices with a PC/laptop fallback.
 //
 // Priority:
-//   1. Quest HEADSET battery via adb (AdbBatteryProbe). Meta's Link runtime
-//      won't expose Quest battery through OpenVR (every property reads back
-//      UnknownProperty), so for Quest-over-Link this is the only working
-//      source. See questBattery.ts.
-//   2. SteamVR device battery (HMD / controllers / trackers) via VRBatteryProbe
-//      — works for NATIVE SteamVR headsets (Index, Vive) that actually report
-//      battery through OpenVR. On Quest these read 0%, so we drop those bogus
-//      readings when adb has given us a real headset number.
+//   1. SteamVR device battery (HMD / controllers / trackers) via
+//      VRBatteryProbe — only devices that genuinely report battery. Over Quest
+//      Link that is the headset plus trackers (e.g. SlimeVR); Touch
+//      controllers report nothing there, so they are simply absent.
+//   2. Quest HEADSET battery via adb (AdbBatteryProbe), optional: when it
+//      works it is read straight from the headset, so it replaces SteamVR's
+//      headset entry (and covers the headset while SteamVR isn't running).
 //   3. If neither, fall back to the host PC / laptop battery.
 //
 // Returns the shared BatteryStatus { available, devices[] } shape so the
@@ -49,24 +48,23 @@ export class BatteryCollector {
     return this.adb.readNow();
   }
 
+  /** Stop the SteamVR helper process (app quit). */
+  dispose(): void {
+    this.vr.dispose();
+  }
+
   async collect(): Promise<BatteryStatus> {
     // Kick both probes; each self-throttles.
     const [vr, adb] = await Promise.all([this.vr.poll(), this.adb.read()]);
 
     if (adb.available) {
-      // Quest headset from adb + any VR controllers/trackers that report a
-      // REAL value (percent > 0). Quest's OpenVR controllers read 0% (bogus),
-      // so those get dropped; a native SteamVR device with a real % is kept.
       const devices: BatteryDevice[] = [
         { kind: 'hmd', name: 'Headset', percent: adb.percent, charging: adb.charging },
+        ...vr.devices.filter((d) => d.kind !== 'hmd'),
       ];
-      for (const d of vr.devices) {
-        if (d.kind !== 'hmd' && d.percent > 0) devices.push(d);
-      }
       return { available: true, devices };
     }
 
-    // No adb headset reading — trust OpenVR for native SteamVR headsets.
     if (vr.available && vr.devices.length > 0) return vr;
 
     // Nothing from VR — PC / laptop battery fallback.

@@ -2374,6 +2374,7 @@ app.on('window-all-closed', () => {
   relay?.stop();
   vrchatWatch.stop();
   overlay.stop();
+  batterySvc.dispose();
   discord.stop();
   if (discordTimer) {
     clearInterval(discordTimer);

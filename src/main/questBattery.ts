@@ -1,12 +1,10 @@
 // Quest headset battery via adb (Android Debug Bridge).
 //
-// WHY: Meta's Oculus Link runtime does NOT publish battery through OpenVR —
-// every property read comes back UnknownProperty (verified: the HMD's display
-// frequency reads fine through the same call, battery doesn't). The only way a
-// PC app can learn the Quest's battery is to talk to the headset's Android OS
-// directly over adb. This reads the HEADSET level via `dumpsys battery`.
-// Controllers are Bluetooth peripherals of the headset and are not exposed
-// this way — nothing on the PC side can read them over Link.
+// WHY: an optional second source for the Quest HEADSET. Over Link, SteamVR
+// does report the headset's battery (vrBattery.ts) — this reads it straight
+// from the headset's Android OS via `dumpsys battery`, and also works while
+// SteamVR isn't running. Touch controllers are Bluetooth peripherals of the
+// headset: neither adb nor Link exposes their battery to the PC.
 //
 // Requirements (one-time, on the user's side):
 //   1. Quest Developer Mode ON (free Meta dev account + toggle in the phone app)
@@ -37,6 +35,9 @@ export class AdbBatteryProbe {
   private inflight: Promise<QuestBatteryResult> | null = null;
   // Battery moves slowly and adb spawns aren't free; poll modestly.
   private static MIN_INTERVAL_MS = 20_000;
+  // No adb installed (most people): don't retry every 20s for nothing.
+  // The panel's Re-scan and System Check still force a fresh read.
+  private static NO_ADB_INTERVAL_MS = 5 * 60_000;
 
   constructor(private getConfiguredPath: () => string | undefined) {}
 
@@ -81,10 +82,19 @@ export class AdbBatteryProbe {
     return this.adbPath;
   }
 
-  private run(adb: string, args: string[], timeoutMs = 6000): Promise<{ out: string; err: string; code: number | null }> {
+  private run(
+    adb: string,
+    args: string[],
+    timeoutMs = 6000,
+  ): Promise<{ out: string; err: string; code: number | null }> {
     return new Promise((resolve) => {
       execFile(adb, args, { windowsHide: true, timeout: timeoutMs }, (error, stdout, stderr) => {
-        const code = error && typeof (error as { code?: number }).code === 'number' ? (error as { code: number }).code : error ? 1 : 0;
+        const code =
+          error && typeof (error as { code?: number }).code === 'number'
+            ? (error as { code: number }).code
+            : error
+              ? 1
+              : 0;
         resolve({ out: String(stdout || ''), err: String(stderr || ''), code });
       });
     });
@@ -93,13 +103,23 @@ export class AdbBatteryProbe {
   async read(): Promise<QuestBatteryResult> {
     if (process.platform !== 'win32') return { ...NONE, state: 'no-adb', detail: 'Windows only' };
     if (this.inflight) return this.inflight;
-    if (Date.now() - this.lastAt < AdbBatteryProbe.MIN_INTERVAL_MS) return this.last;
+    const interval =
+      this.last.state === 'no-adb'
+        ? AdbBatteryProbe.NO_ADB_INTERVAL_MS
+        : AdbBatteryProbe.MIN_INTERVAL_MS;
+    if (Date.now() - this.lastAt < interval) return this.last;
 
     this.inflight = this.doRead().then((res) => {
+      const changed =
+        res.state !== this.last.state ||
+        res.percent !== this.last.percent ||
+        res.detail !== this.last.detail;
       this.last = res;
       this.lastAt = Date.now();
       this.inflight = null;
-      log.info(`[questBattery] ${res.state} ${res.available ? res.percent + '%' : res.detail}`);
+      if (changed) {
+        log.info(`[questBattery] ${res.state} ${res.available ? res.percent + '%' : res.detail}`);
+      }
       return res;
     });
     return this.inflight;
@@ -119,7 +139,11 @@ export class AdbBatteryProbe {
     // 1. Which devices does adb see, and are they authorized?
     const dev = await this.run(adb, ['devices']);
     if (dev.code !== 0 && !dev.out) {
-      return { ...NONE, state: 'no-adb', detail: `adb not runnable (${(dev.err || 'spawn failed').slice(0, 60)})` };
+      return {
+        ...NONE,
+        state: 'no-adb',
+        detail: `adb not runnable (${(dev.err || 'spawn failed').slice(0, 60)})`,
+      };
     }
     // Lines after the header: "SERIAL\tdevice" | "SERIAL\tunauthorized" | "SERIAL\toffline"
     const rows = dev.out
@@ -131,7 +155,11 @@ export class AdbBatteryProbe {
       return { ...NONE, state: 'no-device', detail: 'No Quest seen by adb — plug in Link cable' };
     }
     if (rows.some((r) => /\bunauthorized\b/.test(r))) {
-      return { ...NONE, state: 'unauthorized', detail: 'Put on the headset and tap "Allow USB debugging"' };
+      return {
+        ...NONE,
+        state: 'unauthorized',
+        detail: 'Put on the headset and tap "Allow USB debugging"',
+      };
     }
     if (!rows.some((r) => /\bdevice$/.test(r) || /\tdevice\b/.test(r))) {
       return { ...NONE, state: 'no-device', detail: `Quest not ready (${rows[0]?.slice(0, 40)})` };
@@ -140,7 +168,11 @@ export class AdbBatteryProbe {
     // 2. Read the battery.
     const bat = await this.run(adb, ['shell', 'dumpsys', 'battery']);
     if (!bat.out) {
-      return { ...NONE, state: 'error', detail: `dumpsys failed (${(bat.err || 'no output').slice(0, 60)})` };
+      return {
+        ...NONE,
+        state: 'error',
+        detail: `dumpsys failed (${(bat.err || 'no output').slice(0, 60)})`,
+      };
     }
     const level = Number(bat.out.match(/\blevel:\s*(\d+)/)?.[1] ?? NaN);
     const scaleRaw = Number(bat.out.match(/\bscale:\s*(\d+)/)?.[1] ?? NaN);
