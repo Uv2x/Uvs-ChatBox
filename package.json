@@ -1,6 +1,6 @@
 {
   "name": "osc-chatbox",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Uv's Chat Box — cross-platform OSC chatbox for VRChat with themes, custom backgrounds, media, stats, AFK, battery, and instance radar.",
   "main": "dist/main/main.js",
   "author": "",
