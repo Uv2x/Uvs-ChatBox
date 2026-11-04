@@ -7,6 +7,8 @@ TypeScript + React.
 It can send manual messages and continuously stream **now playing**, **clock**,
 **CPU/GPU/RAM**, and **network** info into your in-game chatbox.
 
+**⬇ [Download the latest version](https://github.com/Uv2x/Uvs-ChatBox/releases/latest)** · **💬 Contact:** Discord `Uv2x`
+
 ---
 
 ## Features
@@ -298,6 +300,11 @@ All sends pass through a rate limiter, per-action cooldowns, and duplicate-suppr
 See **[RELEASING.md](RELEASING.md)**: bump the version, `npm run package`, and upload the three files from `release/` to a new GitHub release.
 
 In development the updater is intentionally disabled (it reports "Updates are disabled in dev builds").
+
+## Contact
+
+Questions, bugs or ideas? Message me on **Discord: `Uv2x`**, or open an
+[issue](https://github.com/Uv2x/Uvs-ChatBox/issues).
 
 ## License
 
