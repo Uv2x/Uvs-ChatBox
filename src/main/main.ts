@@ -68,7 +68,7 @@ import {
 log.transports.file.level = 'info';
 log.transports.console.level = 'debug';
 log.info("[startup] booting Uv's Chat Box", {
-  version: '?',
+  version: app.getVersion(),
   node: process.versions.node,
   electron: process.versions.electron,
 });
@@ -1919,7 +1919,7 @@ function updaterConfigured(): boolean {
   if (isDev) return false;
   try {
     const yml = readFileSync(path.join(process.resourcesPath, 'app-update.yml'), 'utf8');
-    return /owner:\s*\S+/.test(yml) && !/REPLACE_ME/.test(yml);
+    return /provider:\s*\S+/.test(yml) && !/REPLACE_ME/.test(yml);
   } catch {
     return false;
   }
