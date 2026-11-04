@@ -22,6 +22,7 @@
     "package": "npm run build && electron-builder --win --x64 && npm run hash:release",
     "package:dir": "npm run build && electron-builder --win --dir",
     "hash:release": "node scripts/hash-release.js",
+    "stats": "node scripts/download-stats.js",
     "release": "npm run build && electron-builder --win --x64 --publish always && npm run hash:release"
   },
   "dependencies": {
