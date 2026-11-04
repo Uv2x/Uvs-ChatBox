@@ -7,8 +7,8 @@
 // are left out instead of showing a fake 0% (which also fired false
 // low-battery toasts). The Quest headset itself does report over Link.
 //
-// Runs through a long-lived PowerShell + inline-C# helper (compiled once, like
-// the overlay harness) that answers one JSON line per request. Each request
+// Runs through a long-lived PowerShell + inline-C# helper (psHelper.ts,
+// compiled once) that answers one JSON line per request. Each request
 // still attaches to SteamVR as a Background app and detaches again, so a
 // SteamVR shutdown is never held up by us. ONLY works while SteamVR runs.
 //
@@ -21,11 +21,11 @@
 // set in SteamVR → Manage Trackers (steamvr.vrsettings "trackers", keyed by
 // serial), falling back to SlimeVR's "human://LEFT_FOOT" style serials.
 
-import { spawn, type ChildProcessWithoutNullStreams } from 'child_process';
 import { promises as fsp } from 'fs';
 import path from 'path';
 import log from 'electron-log';
 import type { BatteryDevice, BatteryStatus } from '../shared/types';
+import { PsJsonHelper } from './psHelper';
 import { findRuntimeDir } from './vrActivity';
 
 const CS_SOURCE = String.raw`
@@ -286,9 +286,7 @@ export class VRBatteryProbe {
   private lastLogged = '';
   private inflight: Promise<BatteryStatus> | null = null;
   private lastFetchAt = 0;
-  private helper: ChildProcessWithoutNullStreams | null = null;
-  private outBuf = '';
-  private waiting: ((line: string) => void) | null = null;
+  private helper = new PsJsonHelper('vrBattery', PS_HARNESS);
   // Battery moves slowly, but keep the throttle modest so the panel's
   // "Re-scan" button and 8s poll can actually refresh the reading.
   private static MIN_INTERVAL_MS = 9_000;
@@ -335,95 +333,27 @@ export class VRBatteryProbe {
     return this.inflight;
   }
 
-  /** Stop the helper (app quit). It also exits by itself when stdin closes. */
+  /** Stop the helper process (app quit). */
   dispose(): void {
-    const ps = this.helper;
-    this.helper = null;
-    if (!ps) return;
-    try {
-      ps.stdin.write('QUIT\n');
-    } catch {
-      /* already gone */
-    }
-    setTimeout(() => {
-      try {
-        ps.kill();
-      } catch {
-        /* ignore */
-      }
-    }, 800);
-  }
-
-  private ensureHelper(): ChildProcessWithoutNullStreams {
-    if (this.helper) return this.helper;
-    const ps = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', PS_HARNESS], {
-      windowsHide: true,
-    });
-    this.helper = ps;
-    // A write racing the helper's exit must not become an unhandled error.
-    ps.stdin.on('error', (e) => log.warn('[vrBattery] stdin:', e.message));
-    ps.stdout.setEncoding('utf-8');
-    ps.stdout.on('data', (chunk: string) => {
-      this.outBuf += chunk;
-      const lines = this.outBuf.split(/\r?\n/);
-      this.outBuf = lines.pop() ?? '';
-      for (const line of lines) if (line.trim().startsWith('{')) this.settle(line.trim());
-    });
-    ps.stderr.on('data', (d: Buffer) =>
-      log.warn('[vrBattery] stderr:', d.toString().slice(0, 200)),
-    );
-    ps.on('error', (e) => {
-      this.lastError = e.message;
-      this.settle('');
-    });
-    ps.on('close', (code) => {
-      log.info(`[vrBattery] helper exited code=${code}`);
-      if (this.helper === ps) {
-        this.helper = null;
-        this.outBuf = '';
-      }
-      this.settle('');
-    });
-    return ps;
-  }
-
-  private settle(line: string): void {
-    const waiting = this.waiting;
-    this.waiting = null;
-    waiting?.(line);
+    this.helper.dispose();
   }
 
   /** One read from the helper; null when it failed or timed out. */
-  private request(runtimeDir: string): Promise<RawBattery | null> {
-    return new Promise((resolve) => {
-      this.lastError = '';
-      const ps = this.ensureHelper();
-      const timer = setTimeout(() => {
-        this.waiting = null;
-        this.lastError = 'probe timeout';
-        if (this.helper === ps) this.helper = null;
-        ps.kill();
-        resolve(null);
-      }, VRBatteryProbe.READ_TIMEOUT_MS);
-      this.waiting = (line) => {
-        clearTimeout(timer);
-        if (!line) {
-          this.lastError ||= 'helper exited';
-          resolve(null);
-          return;
-        }
-        try {
-          const parsed = JSON.parse(line) as RawBattery;
-          // Prefer an explicit error; otherwise surface the debug trace so
-          // the panel can show what SteamVR reported even when it "works".
-          this.lastError = parsed.error ?? parsed.debug ?? '';
-          resolve(parsed);
-        } catch {
-          this.lastError = `bad json: ${line.slice(0, 120)}`;
-          resolve(null);
-        }
-      };
-      ps.stdin.write(`${runtimeDir}\n`);
-    });
+  private async request(runtimeDir: string): Promise<RawBattery | null> {
+    const line = await this.helper.request(runtimeDir, VRBatteryProbe.READ_TIMEOUT_MS);
+    if (!line) {
+      this.lastError = `helper: ${this.helper.lastFailure}`;
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(line) as RawBattery;
+      // Prefer an explicit error; otherwise surface the debug trace so the
+      // panel can show what SteamVR reported even when it "works".
+      this.lastError = parsed.error ?? parsed.debug ?? '';
+      return parsed;
+    } catch {
+      this.lastError = `bad json: ${line.slice(0, 120)}`;
+      return null;
+    }
   }
 }

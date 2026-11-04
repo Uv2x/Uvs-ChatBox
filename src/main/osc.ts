@@ -207,6 +207,11 @@ export class OscManager extends EventEmitter {
       // Surfaced as a separate event so AfkDetector / main can prefer this
       // over the Win32-only idle-time fallback.
       this.emit('vrchat-afk', { afk: asBool, at: Date.now() });
+    } else if (address === '/avatar/parameters/VRMode') {
+      // 1 = playing in VR, 0 = desktop. Lets AfkDetector tell PCVR (where
+      // keyboard/mouse idle means nothing) from desktop play.
+      const mode = Number(val);
+      if (Number.isFinite(mode)) this.emit('vrchat-vrmode', mode);
     }
 
     if (changed) {

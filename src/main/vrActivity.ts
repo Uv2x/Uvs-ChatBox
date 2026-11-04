@@ -1,7 +1,7 @@
 // Minimal SteamVR probe — answers one question: "is the HMD currently on the
 // user's head?" by reading IVRSystem::GetTrackedDeviceActivityLevel(0).
 //
-// Architecture is the same as the removed battery probe (PowerShell +
+// Architecture is the same as the battery probe (a long-lived PowerShell +
 // inline C# + P/Invoke against openvr_api.dll), but scoped down to a single
 // function call. No property reads, no battery enumeration. We learned from
 // the battery debug that:
@@ -24,6 +24,7 @@ import { spawn } from 'child_process';
 import { promises as fs } from 'fs';
 import path from 'path';
 import log from 'electron-log';
+import { PsJsonHelper } from './psHelper';
 
 export interface VRActivity {
   /** True iff SteamVR was reachable and answered. */
@@ -128,6 +129,22 @@ public static class UvVrAct {
   [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
   delegate int GetTrackedDeviceActivityLevelFn(uint deviceIndex);
 
+  static bool loaded;
+
+  // One request per stdin line (the SteamVR runtime dir) -> one JSON line.
+  // "QUIT" or EOF (the app exited) ends the loop.
+  public static void Run() {
+    string line;
+    while ((line = Console.In.ReadLine()) != null) {
+      if (line == "QUIT") break;
+      string json;
+      try { json = Read(line.Trim()); }
+      catch (Exception ex) { json = "{\"available\":false,\"activityLevel\":-1,\"error\":\"read: " + ex.Message.Replace("\"","'") + "\"}"; }
+      Console.Out.WriteLine(json);
+      Console.Out.Flush();
+    }
+  }
+
   public static string Read(string runtimeDir) {
     if (string.IsNullOrEmpty(runtimeDir))
       return "{\"available\":false,\"activityLevel\":-1,\"error\":\"runtime dir missing\"}";
@@ -135,10 +152,13 @@ public static class UvVrAct {
     if (!File.Exists(dll))
       return "{\"available\":false,\"activityLevel\":-1,\"error\":\"openvr_api.dll not at " + dll.Replace("\\","/").Replace("\"","'") + "\"}";
 
-    IntPtr h = LoadLibraryEx(dll, IntPtr.Zero, LOAD_WITH_ALTERED_SEARCH_PATH);
-    if (h == IntPtr.Zero) {
-      int e = Marshal.GetLastWin32Error();
-      return "{\"available\":false,\"activityLevel\":-1,\"error\":\"LoadLibraryEx err=" + e + "\"}";
+    if (!loaded) {
+      IntPtr h = LoadLibraryEx(dll, IntPtr.Zero, LOAD_WITH_ALTERED_SEARCH_PATH);
+      if (h == IntPtr.Zero) {
+        int e = Marshal.GetLastWin32Error();
+        return "{\"available\":false,\"activityLevel\":-1,\"error\":\"LoadLibraryEx err=" + e + "\"}";
+      }
+      loaded = true;
     }
 
     int err;
@@ -176,14 +196,9 @@ try {
   Add-Type -TypeDefinition @'
 ${CS_SOURCE}
 '@ -Language CSharp -ReferencedAssemblies System.dll | Out-Null
-  $rt = $env:UVS_OVR_RUNTIME
-  if ([string]::IsNullOrEmpty($rt)) {
-    '{"available":false,"activityLevel":-1,"error":"UVS_OVR_RUNTIME empty"}'
-  } else {
-    [UvVrAct]::Read($rt)
-  }
+  [UvVrAct]::Run()
 } catch {
-  '{"available":false,"activityLevel":-1,"error":"ps: ' + ($_.Exception.Message -replace '"',"'") + '"}'
+  [Console]::Out.WriteLine('{"available":false,"activityLevel":-1,"error":"ps: ' + ($_.Exception.Message -replace '["\\r\\n]',' ') + '"}')
 }
 `;
 
@@ -195,6 +210,8 @@ export class VRActivityProbe {
   /** Throttle so chatty callers don't spawn a fresh PowerShell every tick. */
   private inflight: Promise<VRActivity> | null = null;
   private lastFetchAt = 0;
+  private lastLogged = '';
+  private helper = new PsJsonHelper('vrActivity', PS_HARNESS);
   private static MIN_INTERVAL_MS = 4_000;
 
   /** Last known reading without re-polling. */
@@ -220,67 +237,54 @@ export class VRActivityProbe {
       return this.last;
     }
 
-    this.inflight = new Promise<VRActivity>((resolve) => {
-      const ps = spawn(
-        'powershell.exe',
-        ['-NoProfile', '-NonInteractive', '-Command', PS_HARNESS],
-        { windowsHide: true, env: { ...process.env, UVS_OVR_RUNTIME: dir } },
-      );
-      let out = '';
-      const timer = setTimeout(() => {
-        ps.kill();
-        resolve({
-          available: false,
-          activityLevel: -1,
-          hmdOnHead: false,
-          error: 'probe timeout',
-        });
-      }, 8000);
-      ps.stdout.on('data', (d) => (out += d.toString()));
-      ps.on('error', (e) => {
-        clearTimeout(timer);
-        resolve({ available: false, activityLevel: -1, hmdOnHead: false, error: e.message });
-      });
-      ps.on('close', () => {
-        clearTimeout(timer);
-        const line =
-          out
-            .split(/\r?\n/)
-            .map((l) => l.trim())
-            .reverse()
-            .find((l) => l.startsWith('{')) ?? '';
-        if (!line) {
-          resolve({ available: false, activityLevel: -1, hmdOnHead: false, error: 'no json line' });
-          return;
-        }
-        try {
-          const parsed = JSON.parse(line) as {
-            available: boolean;
-            activityLevel: number;
-            error?: string;
-          };
-          const lvl = Number(parsed.activityLevel);
-          resolve({
-            available: !!parsed.available,
-            activityLevel: lvl,
-            // 1 = UserInteraction, 2 = UserInteraction_Timeout — both mean
-            // the proximity sensor is triggered (headset is being worn).
-            hmdOnHead: lvl === 1 || lvl === 2,
-            ...(parsed.error ? { error: parsed.error } : {}),
-          });
-        } catch {
-          resolve({ available: false, activityLevel: -1, hmdOnHead: false, error: 'parse failed' });
-        }
-      });
-    }).then((res) => {
+    this.inflight = this.read(dir).then((res) => {
       this.last = res;
       this.lastFetchAt = Date.now();
       this.inflight = null;
-      if (res.error) log.info(`[vrActivity] ${res.error}`);
-      else log.info(`[vrActivity] level=${res.activityLevel} onHead=${res.hmdOnHead}`);
+      // Log changes only — this is polled every few seconds.
+      const summary = res.error ?? `level=${res.activityLevel} onHead=${res.hmdOnHead}`;
+      if (summary !== this.lastLogged) {
+        this.lastLogged = summary;
+        log.info(`[vrActivity] ${summary}`);
+      }
       return res;
     });
 
     return this.inflight;
+  }
+
+  /** Stop the helper process (app quit). */
+  dispose(): void {
+    this.helper.dispose();
+  }
+
+  private async read(dir: string): Promise<VRActivity> {
+    const off = (error: string): VRActivity => ({
+      available: false,
+      activityLevel: -1,
+      hmdOnHead: false,
+      error,
+    });
+    // The first request also compiles the helper (a few seconds).
+    const line = await this.helper.request(dir, 12_000);
+    if (!line) return off(`helper: ${this.helper.lastFailure}`);
+    try {
+      const parsed = JSON.parse(line) as {
+        available: boolean;
+        activityLevel: number;
+        error?: string;
+      };
+      const lvl = Number(parsed.activityLevel);
+      return {
+        available: !!parsed.available,
+        activityLevel: lvl,
+        // 1 = UserInteraction, 2 = UserInteraction_Timeout — both mean
+        // the proximity sensor is triggered (headset is being worn).
+        hmdOnHead: lvl === 1 || lvl === 2,
+        ...(parsed.error ? { error: parsed.error } : {}),
+      };
+    } catch {
+      return off('parse failed');
+    }
   }
 }

@@ -84,7 +84,11 @@ const osc = new OscManager();
 const sysStats = new StatsCollector();
 const batterySvc = new BatteryCollector(() => store.get().questAdbPath);
 const media = new MediaCollector();
-const afkDet = new AfkDetector();
+// SteamVR HMD activity probe — shared by the AFK detector (which the
+// auto-responder and the AFK panel also go through). poll() throttles itself
+// and talks to one long-lived helper process.
+const vrActivity = new VRActivityProbe();
+const afkDet = new AfkDetector(vrActivity);
 // VRCOSC-ported services (Phase 1 of the VRCOSC feature port).
 const weatherSvc = new WeatherProvider();
 // Voice command matcher: dispatches to `engine.runActions` so all the
@@ -97,10 +101,6 @@ const whisperDl = new WhisperDownloader();
 // persists across live-loop ticks; an enabled `liveLyrics` setting causes
 // gatherAndSend() to consult it and append the active line to the media row.
 const lyricsService = new LyricsService();
-// SteamVR HMD activity probe — shared across IPC + autoresponder + presence
-// so we don't run multiple PowerShell spawns. Each consumer calls poll(),
-// which throttles automatically and returns the cached reading.
-const vrActivity = new VRActivityProbe();
 // VRChat output-log tailer. Started on app whenReady when
 // settings.vrchatLog.enabled is true; stopped + restarted on settings save.
 const vrchatLog = new VrchatLog();
@@ -575,10 +575,15 @@ function moduleEnabled(settings: AppSettings, id: string): boolean {
 }
 
 /** The VRChat process watcher polls only while something needs it: the
- *  auto-start-with-VRChat feature or the Session Timer module. Called at
- *  boot and after every settings save/reset/import. */
+ *  auto-start-with-VRChat feature, the Session Timer module, or AFK
+ *  detection (VRChat closing clears its last AFK flag). Called at boot and
+ *  after every settings save/reset/import. */
 function reconfigureVrchatWatch(settings: AppSettings): void {
-  const needed = settings.autoStartWithVrchat === true || moduleEnabled(settings, 'session');
+  const needed =
+    settings.autoStartWithVrchat === true ||
+    moduleEnabled(settings, 'session') ||
+    moduleEnabled(settings, 'afk') ||
+    settings.autoResponder?.enabled === true;
   if (needed) vrchatWatch.start();
   else vrchatWatch.stop();
 }
@@ -1764,22 +1769,11 @@ function registerIpc(): void {
   });
 
   // One-shot AFK snapshot. Used by the Smart AFK feature panel to show the
-  // live idle counter, so users can verify detection is actually working
-  // before relying on it. Also includes the SteamVR HMD activity reading so
-  // the panel can show whether the headset is currently on the user's head.
+  // live away counter, so users can verify detection is actually working
+  // before relying on it. Includes the SteamVR HMD reading so the panel can
+  // show whether the headset is currently on the user's head.
   safeHandle(IPC.GET_AFK_NOW, null, async () => {
-    const [base, vr] = await Promise.all([
-      afkDet.poll(store.get().afk.thresholdSec),
-      vrActivity.poll(),
-    ]);
-    return {
-      ...base,
-      hmd: {
-        available: vr.available,
-        activityLevel: vr.activityLevel,
-        onHead: vr.hmdOnHead,
-      },
-    };
+    return afkDet.poll(store.get().afk.thresholdSec);
   });
 
   safeHandle(IPC.OPEN_WINDOWS_SETTING, null, async (raw: unknown) => {
@@ -2053,6 +2047,9 @@ function wireEventSources(): void {
   osc.on('vrchat-afk', (e: { afk: boolean; at: number }) => {
     afkDet.setVrchatAfk(e.afk);
   });
+  osc.on('vrchat-vrmode', (mode: number) => afkDet.setVrchatVrMode(mode));
+  // VRChat closed: its last AFK / VRMode values no longer apply.
+  vrchatWatch.on('stopped', () => afkDet.resetVrchat());
 
   // Live OSC parameter monitor (spec §12).
   osc.on('monitor', (m: { address: string; value: string; at: number }) => {
@@ -2375,6 +2372,7 @@ app.on('window-all-closed', () => {
   vrchatWatch.stop();
   overlay.stop();
   batterySvc.dispose();
+  vrActivity.dispose();
   discord.stop();
   if (discordTimer) {
     clearInterval(discordTimer);

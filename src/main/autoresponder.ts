@@ -2,13 +2,13 @@ import type { ActionEngine } from './engine';
 import type { AfkDetector } from './afk';
 import type { OscManager } from './osc';
 import type { AppSettings } from '../shared/types';
-import { VRActivityProbe } from './vrActivity';
 
 /**
  * Auto AFK responder (spec §14C).
  *
- * Polls global idle time (and optionally mute state) on an interval. When the
- * user crosses the inactivity threshold — or mutes, if enabled — it fires the
+ * Asks the shared AfkDetector (VRChat's AFK flag, keyboard/mouse idle, headset
+ * on/off — see afk.ts) on an interval, with this feature's own threshold, and
+ * optionally watches mute. When the user goes AFK — or mutes, if enabled — it fires the
  * configured AFK message exactly once via the ActionEngine (so it still passes
  * through the safety/throttle layer). When the user returns (input resumes /
  * unmutes), it arms again for the next idle period and, if the current chatbox
@@ -26,11 +26,6 @@ export class AutoResponder {
 
   private timer: NodeJS.Timeout | null = null;
   private fired = false; // have we already sent for this idle period?
-  /** Shared HMD activity probe. Polls SteamVR's GetTrackedDeviceActivityLevel
-   *  so we can override desktop-idle: if the user is in VR, they're not AFK
-   *  even when mouse/keyboard are still. Conversely, if the HMD is off
-   *  their head, they ARE afk regardless of desktop input. */
-  private vr = new VRActivityProbe();
 
   constructor(
     engine: ActionEngine,
@@ -48,8 +43,7 @@ export class AutoResponder {
     this.stop();
     const cfg = this.getSettings().autoResponder;
     if (!cfg.enabled) return;
-    // Poll every 5s — fine-grained enough for a minutes-based threshold,
-    // cheap enough not to spam PowerShell idle queries.
+    // Poll every 5s — fine-grained enough for a minutes-based threshold.
     this.timer = setInterval(() => void this.tick(), 5000);
     void this.tick();
   }
@@ -77,24 +71,12 @@ export class AutoResponder {
     }
 
     const thresholdSec = Math.max(60, cfg.afterMin * 60);
-    const { idleSec } = await this.afkDet.poll(thresholdSec);
+    const afkState = await this.afkDet.poll(thresholdSec);
     const muted = this.osc.getAudioStatus().muted;
-
-    // SteamVR HMD activity: if the headset is on the user's head AND
-    // recently active, they're using VR — desktop idle is meaningless.
-    // If SteamVR isn't installed/running, vrActivity is unavailable and we
-    // fall back to the original desktop-only behavior.
-    const vr = await this.vr.poll();
-    const hmdActive = vr.available && vr.hmdOnHead;
-    const hmdOffHead = vr.available && !vr.hmdOnHead;
-
-    const idleTrigger = idleSec >= thresholdSec;
-    const muteTrigger = cfg.onMute && muted;
-    // Combined AFK decision:
-    //   - hmdActive overrides everything (in VR == not AFK)
-    //   - hmdOffHead is itself a strong AFK signal (took the headset off)
-    //   - otherwise fall back to desktop idle + mute as before.
-    const shouldBeAfk = !hmdActive && (hmdOffHead || idleTrigger || muteTrigger);
+    // Muting counts only while the headset isn't being worn — in VR people
+    // mute all the time while playing.
+    const muteTrigger = cfg.onMute && muted && !afkState.hmd?.onHead;
+    const shouldBeAfk = afkState.afk || muteTrigger;
 
     if (shouldBeAfk && !this.fired) {
       // Transition INTO afk → send once. Dedicated pin key so (a) it does

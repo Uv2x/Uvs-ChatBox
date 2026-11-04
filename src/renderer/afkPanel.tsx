@@ -51,9 +51,6 @@ export function AfkPanel(props: {
   const isAfk = !!live?.afk;
   const cfgAuto = settings.autoResponder;
   const hmd = live?.hmd;
-  // Effective AFK decision the auto-responder will reach, surfaced so users
-  // can preview what'll happen before enabling.
-  const effectiveAfk = hmd?.available ? !hmd.onHead : isAfk;
   const hmdLabel = !hmd?.available
     ? '— (SteamVR not detected)'
     : hmd.onHead
@@ -91,11 +88,11 @@ export function AfkPanel(props: {
       </div>
 
       {/* Live state — confirms detection is actually working. */}
-      <div className={`afk-live ${effectiveAfk ? 'on' : ''}`}>
+      <div className={`afk-live ${isAfk ? 'on' : ''}`}>
         <div className="afk-live-head">
-          <span className="afk-live-label">{effectiveAfk ? '😴 AFK' : '🟢 Active'}</span>
+          <span className="afk-live-label">{isAfk ? '😴 AFK' : '🟢 Active'}</span>
           <span className="afk-live-num">
-            idle: <b>{fmt(idleSec)}</b> / {fmt(thresholdSec)}
+            away: <b>{fmt(idleSec)}</b> / {fmt(thresholdSec)}
           </span>
         </div>
         <div className="afk-bar">
@@ -112,13 +109,13 @@ export function AfkPanel(props: {
         {hmd?.available && (
           <p className="small muted mt">
             {hmd.onHead
-              ? "AFK detection is paused while you're in VR."
-              : "Headset off-head — you'll be flagged AFK immediately."}
+              ? 'Headset on — you count as here, even if the keyboard and mouse are idle.'
+              : `Headset off — AFK after ${fmt(thresholdSec)} without it or the keyboard/mouse.`}
           </p>
         )}
         {live === null && (
           <span className="small muted">
-            Probing system idle time…
+            Checking…
             {Date.now() - mountedAt.current > 6000 && ' (slower than expected; check terminal log)'}
           </span>
         )}
