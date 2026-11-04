@@ -1,7 +1,7 @@
 # Releasing a new version
 
 Uv's Chat Box updates itself from **GitHub Releases** on
-[github.com/Uv2x/uvs-chatbox](https://github.com/Uv2x/uvs-chatbox/releases).
+[github.com/Uv2x/Uvs-ChatBox](https://github.com/Uv2x/Uvs-ChatBox/releases).
 
 Every installed copy checks 20 seconds after launch and then every 4 hours.
 When a newer release exists, a banner offers **Download → Restart to update**.
@@ -9,7 +9,7 @@ If you skip the restart, the update installs the next time you quit.
 
 ## How it works
 
-- `package.json` → `build.publish` names the repo (`Uv2x/uvs-chatbox`).
+- `package.json` → `build.publish` names the repo (`Uv2x/Uvs-ChatBox`).
   electron-builder bakes that into `resources/app-update.yml` inside every
   installer it builds.
 - Each release carries a small `latest.yml` that lists the newest version, the
@@ -45,7 +45,7 @@ This creates three files in `release/` that matter:
 
 ### 3. Publish on GitHub
 
-1. Go to **github.com/Uv2x/uvs-chatbox → Releases → Draft a new release**.
+1. Go to **github.com/Uv2x/Uvs-ChatBox → Releases → Draft a new release**.
 2. **Choose a tag**: type `vX.Y.Z` (e.g. `v1.2.0`) and click _Create new tag_.
 3. Title it the same, and write what changed.
 4. Drag in **all three files** from step 2. `latest.yml` is the one that makes

@@ -83,7 +83,7 @@ export class LyricsService {
   async probe(): Promise<LyricsStatus> {
     try {
       const res = await fetch('https://lrclib.net/api/get?artist_name=Adele&track_name=Hello', {
-        headers: { 'User-Agent': 'uvs-chatbox/1.0 (+https://github.com)' },
+        headers: { 'User-Agent': 'uvs-chatbox/1.1 (+https://github.com/Uv2x/Uvs-ChatBox)' },
         signal: AbortSignal.timeout(8000),
       });
       if (res.status >= 500 || res.status === 429) this.noteDown(`HTTP ${res.status}`);
@@ -203,7 +203,7 @@ export class LyricsService {
     const url = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}`;
     try {
       const res = await fetch(url, {
-        headers: { 'User-Agent': 'uvs-chatbox/1.0 (+https://github.com)' },
+        headers: { 'User-Agent': 'uvs-chatbox/1.1 (+https://github.com/Uv2x/Uvs-ChatBox)' },
       });
       if (!res.ok) return this.nonOk(res.status, '/api/get');
       this.noteUp();
@@ -242,7 +242,7 @@ export class LyricsService {
     const url = `https://lrclib.net/api/search?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}`;
     try {
       const res = await fetch(url, {
-        headers: { 'User-Agent': 'uvs-chatbox/1.0 (+https://github.com)' },
+        headers: { 'User-Agent': 'uvs-chatbox/1.1 (+https://github.com/Uv2x/Uvs-ChatBox)' },
       });
       if (!res.ok) return this.nonOk(res.status, '/api/search');
       this.noteUp();

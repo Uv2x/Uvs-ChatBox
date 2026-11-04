@@ -292,7 +292,7 @@ All sends pass through a rate limiter, per-action cooldowns, and duplicate-suppr
 
 - **Auto-AFK responder** (Settings tab): after X minutes of global input inactivity — or on mute, if enabled — it sends your AFK message once, then clears it when you return. Edge-triggered so it never spams; all sends still pass through the safety throttle.
 - **Live length validation**: phrase/macro text actions and timeline frames show a live `n/144` counter that turns red past VRChat's limit, so you catch overflow before sending.
-- **Auto-updates** from [GitHub Releases](https://github.com/Uv2x/uvs-chatbox/releases): checks in the background, then a banner offers **Download → Restart to update**. Settings → Updates and 🩺 System Check show the same state. Powered by `electron-updater`.
+- **Auto-updates** from [GitHub Releases](https://github.com/Uv2x/Uvs-ChatBox/releases): checks in the background, then a banner offers **Download → Restart to update**. Settings → Updates and 🩺 System Check show the same state. Powered by `electron-updater`.
 
 ### Shipping an update
 See **[RELEASING.md](RELEASING.md)**: bump the version, `npm run package`, and upload the three files from `release/` to a new GitHub release.
