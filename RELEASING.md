@@ -55,6 +55,17 @@ This creates three files in `release/` that matter:
 Within 4 hours every running copy shows the update banner. Restarting the app
 makes it show sooner.
 
+### Faster: publish with the GitHub CLI
+
+`gh` is installed and signed in as Uv2x, so after step 2 one command does all
+of step 3 (replace `1.2.0` with your version, and write what changed):
+
+```powershell
+gh release create v1.2.0 --title "Uv's Chat Box 1.2.0" --notes "What changed..." release/Uvs-Chat-Box-Setup-1.2.0.exe release/Uvs-Chat-Box-Setup-1.2.0.exe.blockmap release/latest.yml
+```
+
+Push your code first (`git push`) so the tag points at the code you built.
+
 ### Optional: one command instead of steps 2–3
 
 If you have a GitHub token, `npm run release` builds and uploads everything
