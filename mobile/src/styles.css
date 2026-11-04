@@ -1,0 +1,252 @@
+:root {
+  --bg: #12101a;
+  --card: #1c1a26;
+  --card2: #24212f;
+  --line: #322e42;
+  --text: #ece9f5;
+  --muted: #9a93b3;
+  --accent: #8b7fd4;
+  --accent2: #6f63c4;
+  --danger: #e2607a;
+  --good: #5fd08a;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overscroll-behavior: none;
+}
+
+.app {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top) + 10px) 14px calc(env(safe-area-inset-bottom) + 90px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hdr {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 2px;
+}
+.hdr h1 {
+  font-size: 22px;
+  margin: 0;
+  letter-spacing: 0.2px;
+}
+.sub {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.lbl {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  font-weight: 700;
+}
+.hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.in {
+  background: var(--card2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 16px; /* >=16px so iOS doesn't zoom on focus */
+  outline: none;
+}
+.in:focus {
+  border-color: var(--accent);
+}
+.in.ip {
+  flex: 1;
+}
+.in.port {
+  width: 84px;
+}
+
+.ta {
+  background: var(--card2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 16px;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+}
+.ta:focus {
+  border-color: var(--accent);
+}
+
+.btn {
+  border: 1px solid var(--line);
+  background: var(--card2);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  flex: 1;
+  transition: transform 0.05s ease;
+}
+.btn:active {
+  transform: scale(0.97);
+}
+.btn:disabled {
+  opacity: 0.5;
+}
+.btn.primary {
+  background: linear-gradient(180deg, var(--accent), var(--accent2));
+  border-color: transparent;
+  color: #fff;
+}
+.btn.ghost {
+  background: var(--card2);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(102px, 1fr));
+  gap: 8px;
+}
+.chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 6px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--card2);
+  color: var(--text);
+  cursor: pointer;
+  transition: transform 0.05s ease;
+}
+.chip:active {
+  transform: scale(0.96);
+}
+.chip.on {
+  border-color: var(--accent);
+  background: #2c2740;
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+.chip .ico {
+  font-size: 22px;
+}
+.chip .cap {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.saved {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.saved-row {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+.saved-text {
+  flex: 1;
+  text-align: left;
+  background: var(--card2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 11px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.x {
+  border: 1px solid var(--line);
+  background: var(--card2);
+  color: var(--muted);
+  border-radius: 10px;
+  padding: 0 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.pinbar {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(env(safe-area-inset-bottom) + 46px);
+  background: #2c2740;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 616px;
+  margin: 0 auto;
+}
+.pinbar b {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flash {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom) + 8px);
+  background: #000c;
+  border: 1px solid var(--line);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  max-width: 90vw;
+  text-align: center;
+  backdrop-filter: blur(6px);
+}

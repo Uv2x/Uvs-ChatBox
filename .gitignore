@@ -1,0 +1,10 @@
+node_modules/
+dist/
+release/
+mobile/dist/
+mobile/ios/
+mobile/android/
+.claude/
+.env*
+*.log
+.DS_Store
