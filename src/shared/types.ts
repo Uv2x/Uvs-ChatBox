@@ -409,7 +409,7 @@ export interface AppSettings {
   ai?: {
     enabled: boolean;
     apiKey: string;
-    /** Model id. 'claude-opus-4-7' default, 'claude-haiku-4-5' for cost. */
+    /** Model id. 'claude-opus-5-5' default; Sonnet / Haiku 5.5 cost less. */
     model: string;
     persona: string;
   };

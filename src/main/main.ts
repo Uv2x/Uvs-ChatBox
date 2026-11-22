@@ -134,7 +134,7 @@ const ai = new AiClient(() => {
     s.ai ?? {
       enabled: false,
       apiKey: '',
-      model: 'claude-opus-4-7',
+      model: 'claude-opus-5-5',
       persona: 'Casual, friendly, a bit playful.',
     }
   );

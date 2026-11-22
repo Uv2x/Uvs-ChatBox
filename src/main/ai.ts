@@ -9,8 +9,10 @@
 //  - The system prompt is the stable prefix with `cache_control: ephemeral`
 //    so repeated calls hit the cache (~90% cheaper). Per-call user content
 //    is the volatile suffix and never has a breakpoint.
-//  - Default model is `claude-opus-4-7` (per Claude API skill defaults).
-//    Users who want lower cost can pick `claude-haiku-4-5` in Settings.
+//  - Default model is `claude-opus-5-5`; Sonnet 5.5 and Haiku 5.5 are in
+//    Settings for lower cost. These models always think before answering:
+//    'low' effort keeps that quick for one-line text, and the token cap
+//    leaves room for it so the answer isn't cut off.
 //
 // Auth: API key comes from settings.ai.apiKey (renderer → Settings UI).
 //   Falls back to process.env.ANTHROPIC_API_KEY for dev. We never log the key.
@@ -25,12 +27,26 @@ export interface AiConfig {
   enabled: boolean;
   /** User's Anthropic API key (kept in settings.json — local only). */
   apiKey: string;
-  /** Model id. Default 'claude-opus-4-7' (best); 'claude-haiku-4-5' for cost. */
+  /** Model id. Default 'claude-opus-5-5'; Sonnet / Haiku 5.5 cost less. */
   model: string;
   /** Persona / voice description fed to the model as part of the system
    *  prompt. Lets the user tune tone ("casual, kawaii, lots of emoji"). */
   persona: string;
 }
+
+/** Request fields the bundled SDK (0.65) predates, sent as-is. 'low' effort
+ *  suits one-line chatbox text. On a refusal, Opus / Sonnet 5.5 retry on
+ *  another model server-side ("fallbacks"); Haiku 5.5 has no such fallback. */
+const FALLBACK_MODELS = new Set(['claude-opus-5-5', 'claude-sonnet-5-5']);
+function requestExtras(model: string): Record<string, unknown> {
+  return {
+    output_config: { effort: 'low' },
+    ...(FALLBACK_MODELS.has(model)
+      ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' }
+      : {}),
+  };
+}
+type CreateParams = Anthropic.Beta.Messages.MessageCreateParamsNonStreaming;
 
 /** Result envelope so the renderer doesn't have to know about SDK error types. */
 export type AiResult<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -63,11 +79,12 @@ export class AiClient {
     const ctx = this.ensure();
     if (!ctx) return { ok: false, error: 'AI is disabled or no API key set.' };
     try {
-      const r = await ctx.client.messages.create({
+      const r = await ctx.client.beta.messages.create({
         model: ctx.cfg.model,
-        max_tokens: 16,
+        max_tokens: 1024,
         messages: [{ role: 'user', content: 'Reply with just the word OK.' }],
-      });
+        ...requestExtras(ctx.cfg.model),
+      } as CreateParams);
       return {
         ok: true,
         data: {
@@ -96,7 +113,7 @@ export class AiClient {
       systemSuffix:
         '\n\nYour job: produce ONE short chatbox line (max 80 chars). No quotes, no preamble, no markdown.',
       user: this.contextBlock(ctx),
-      maxTokens: 100,
+      maxTokens: 1024,
     });
   }
 
@@ -112,9 +129,10 @@ export class AiClient {
     const ctx = this.ensure();
     if (!ctx) return { ok: false, error: 'AI disabled' };
     try {
-      const r = await ctx.client.messages.create({
+      const r = await ctx.client.beta.messages.create({
         model: ctx.cfg.model,
         max_tokens: opts.maxTokens,
+        ...requestExtras(ctx.cfg.model),
         system: [
           {
             type: 'text',
@@ -123,9 +141,13 @@ export class AiClient {
           },
         ],
         messages: [{ role: 'user', content: opts.user }],
-      });
-      const text = this.extractText(r);
-      return { ok: true, data: text.trim() };
+      } as CreateParams);
+      if (r.stop_reason === 'refusal') {
+        return { ok: false, error: 'Claude declined to write that — try again.' };
+      }
+      const text = this.extractText(r.content).trim();
+      if (!text) return { ok: false, error: 'No text came back — try again.' };
+      return { ok: true, data: text };
     } catch (e) {
       return { ok: false, error: this.errorString(e) };
     }
@@ -146,9 +168,9 @@ export class AiClient {
 
   /** Pull the first text block out of a Messages response. Handles the
    *  discriminated-union ContentBlock[] shape required by the SDK types. */
-  private extractText(msg: Anthropic.Message): string {
-    for (const block of msg.content) {
-      if (block.type === 'text') return block.text;
+  private extractText(content: ReadonlyArray<{ type: string; text?: string }>): string {
+    for (const block of content) {
+      if (block.type === 'text') return block.text ?? '';
     }
     return '';
   }

@@ -644,7 +644,7 @@ export function SettingsPanel(props: {
                   Model
                   <select
                     className="mini-input mono"
-                    value={settings.ai?.model ?? 'claude-opus-4-7'}
+                    value={settings.ai?.model ?? 'claude-opus-5-5'}
                     onChange={(e) =>
                       onPersist({
                         ...settings,
@@ -653,9 +653,9 @@ export function SettingsPanel(props: {
                     }
                     style={{ width: 200 }}
                   >
-                    <option value="claude-opus-4-7">Opus 4.7 — best, $$$</option>
-                    <option value="claude-sonnet-4-6">Sonnet 4.6 — fast + smart, $$</option>
-                    <option value="claude-haiku-4-5">Haiku 4.5 — cheapest, $</option>
+                    <option value="claude-opus-5-5">Opus 5.5 — best (default)</option>
+                    <option value="claude-sonnet-5-5">Sonnet 5.5 — fast + smart, costs less</option>
+                    <option value="claude-haiku-5-5">Haiku 5.5 — cheapest, plenty for one line</option>
                   </select>
                 </label>
                 <AiTestButton flash={flash} />
@@ -885,7 +885,7 @@ function aiFallback() {
   return {
     enabled: false,
     apiKey: '',
-    model: 'claude-opus-4-7',
+    model: 'claude-opus-5-5',
     persona: 'Casual, friendly, a bit playful.',
   };
 }

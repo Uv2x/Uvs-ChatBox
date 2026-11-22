@@ -291,7 +291,7 @@ const DEFAULTS: AppSettings = {
   ai: {
     enabled: false,
     apiKey: '',
-    model: 'claude-opus-4-7',
+    model: 'claude-opus-5-5',
     persona:
       'Casual, friendly, a bit playful. Likes emoji but uses them sparingly. Concise — never more than one short sentence.',
   },
@@ -329,6 +329,16 @@ const DEFAULTS: AppSettings = {
  *  the unused AI switches, the second AFK timer). Strip them on load so they
  *  don't linger forever. Also drops the default "Streaming" status (only if
  *  unchanged) and moves anyone on the removed Streamer persona to Chill. */
+/** Old model ids (from earlier versions' dropdown) → current equivalents. */
+function currentModel(model: string): string {
+  const renamed: Record<string, string> = {
+    'claude-opus-4-7': 'claude-opus-5-5',
+    'claude-sonnet-4-6': 'claude-sonnet-5-5',
+    'claude-haiku-4-5': 'claude-haiku-5-5',
+  };
+  return renamed[model] ?? model;
+}
+
 function dropRemovedFeatures(s: AppSettings): AppSettings {
   const strip = <T extends object>(obj: T, keys: string[]): T => {
     const copy = { ...obj } as Record<string, unknown>;
@@ -358,7 +368,9 @@ function dropRemovedFeatures(s: AppSettings): AppSettings {
       'refreshLoop',
       'autoResponder',
     ]),
-    ...(s.ai ? { ai: strip(s.ai, ['features', 'wakeWord']) } : {}),
+    ...(s.ai
+      ? { ai: { ...strip(s.ai, ['features', 'wakeWord']), model: currentModel(s.ai.model) } }
+      : {}),
   };
 }
 
@@ -586,7 +598,7 @@ export class SettingsStore {
         ...(base.ai ?? {
           enabled: false,
           apiKey: '',
-          model: 'claude-opus-4-7',
+          model: 'claude-opus-5-5',
           persona: '',
         }),
         ...(over.ai || {}),
