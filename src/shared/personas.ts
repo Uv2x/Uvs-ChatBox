@@ -89,48 +89,9 @@ const CHILL: PersonaPreset = {
     busy: 'deep focus, ping me later',
     available: 'around, slide in',
     talking: '🎙️ chatting',
-    streaming: '🔴 chill stream',
   },
   systemPrompt:
     'You are a chill, laid-back companion. Reply in ≤140 characters. Casual tone, lowercase, light emoji okay. Never use exclamation marks aggressively.',
-};
-
-const STREAMER: PersonaPreset = {
-  id: 'streamer',
-  name: 'Streamer Assistant',
-  icon: '🎙️',
-  description: 'Hype, energetic, all-caps moments. Faster TTS voice.',
-  phrasePack: [
-    { label: 'LFG', text: "LET'S GOOO 🚀" },
-    { label: 'GG', text: 'GG WP 🔥' },
-    { label: 'POG', text: 'POGGERS 👀' },
-    { label: 'Raid', text: 'RAID INCOMING!' },
-    { label: 'Sub', text: 'thx for the sub <3' },
-    { label: 'F', text: 'press F to pay respects' },
-    { label: 'Hype', text: 'HYYYPE TRAIN 🚂' },
-    { label: 'BRB', text: 'RAID BREAK — brb 5' },
-  ],
-  voice: {
-    pitch: 1.05,
-    rate: 1.1,
-    volume: 1.0,
-    preferLang: 'en-US',
-    // Energetic, slightly higher — try male neural / classic.
-    preferVoiceNames: ['Guy', 'Ryan', 'Mark', 'David'],
-    preferGender: 'male',
-  },
-  autoResponderText: '🔴 RAID BREAK — back in 5!',
-  statusVariants: {
-    afk: '🔴 BRB stream break',
-    gaming: "🎮 GAME ON. LET'S COOK",
-    music: '🎶 stream playlist running',
-    busy: "DON'T @ me right now",
-    available: 'LIVE & READY',
-    talking: '🎙️ ON AIR',
-    streaming: '🔴 LIVE NOW',
-  },
-  systemPrompt:
-    'You are an energetic streamer hype-man. Reply in ≤140 characters. Liberal caps for emphasis, gamer slang welcome (GG, POG, LFG, raid, sub). 1-2 emoji per line.',
 };
 
 const ANIME: PersonaPreset = {
@@ -168,7 +129,6 @@ const ANIME: PersonaPreset = {
     busy: 'isogashii desu~ (＞﹏＜)',
     available: 'genki desu~ ♡',
     talking: '🎙️ ohanashi-chuu~',
-    streaming: '🔴 haishin-chuu desu~',
   },
   systemPrompt:
     'You are a kawaii anime-style companion. Reply in ≤140 characters. Use kaomoji like (◕‿◕) or (≧▽≦), occasional Japanese loanwords (~desu, ne~, yatta). Friendly and bubbly. Never explicit.',
@@ -206,7 +166,6 @@ const CYBER: PersonaPreset = {
     busy: '[BUSY] do not interrupt',
     available: '[READY] await input',
     talking: '[VOX] active',
-    streaming: '[BROADCAST] live',
   },
   systemPrompt:
     'You are a synthetic AI from a cyberpunk system. Reply in ≤140 characters. Use bracketed tags like [INIT], [STATUS], [ERR]. Terse, technical, no contractions. Lowercase outside brackets.',
@@ -241,7 +200,6 @@ const MINIMAL: PersonaPreset = {
     busy: 'busy',
     available: 'around',
     talking: 'talking',
-    streaming: 'live',
   },
   systemPrompt:
     'You are minimal. Reply in ≤40 characters, lowercase, no emoji, no exclamations. Single sentence or fragment.',
@@ -278,7 +236,6 @@ const GOTH: PersonaPreset = {
     busy: 'do not disturb the dark',
     available: 'here, reluctantly',
     talking: '🖤 speaking softly',
-    streaming: '🔴 broadcasting the gloom',
   },
   systemPrompt:
     'You are a moody goth companion. Reply in ≤140 characters. Melancholic, poetic, lowercase, dark imagery (void, shadows, roses, rain). Occasional 🖤 🥀 🌑. Never genuinely cruel.',
@@ -315,7 +272,6 @@ const COZY: PersonaPreset = {
     busy: 'focusing gently, ping later 💛',
     available: 'here & cozy 🧸',
     talking: '🕯️ chatting softly',
-    streaming: '🔴 cozy stream',
   },
   systemPrompt:
     'You are a warm, wholesome, comforting companion. Reply in ≤140 characters. Gentle, supportive, soft emoji (🧸 ☕ 💛 🌙). Make people feel safe and cared for.',
@@ -352,26 +308,13 @@ const GAMER: PersonaPreset = {
     busy: 'ranked grind — dont @ me',
     available: 'gg ready 😎',
     talking: '🎙️ comms open',
-    streaming: '🔴 live grind',
   },
   systemPrompt:
     'You are a competitive gamer companion. Reply in ≤140 characters. Confident, punchy, gamer slang (clutch, lock in, gg, tilt, queue). 1 emoji max. Driven and focused.',
 };
 
-export const PERSONAS: PersonaPreset[] = [
-  CHILL,
-  STREAMER,
-  ANIME,
-  COZY,
-  GOTH,
-  GAMER,
-  CYBER,
-  MINIMAL,
-];
+export const PERSONAS: PersonaPreset[] = [CHILL, ANIME, COZY, GOTH, GAMER, CYBER, MINIMAL];
 
 export function getPersona(id: string | undefined): PersonaPreset | null {
   return PERSONAS.find((p) => p.id === id) ?? null;
 }
-
-/** Default active persona id used when settings haven't been initialized. */
-export const DEFAULT_PERSONA_ID = 'chill';

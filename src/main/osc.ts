@@ -2,7 +2,6 @@ import { Client, Server } from 'node-osc';
 import { EventEmitter } from 'events';
 import log from 'electron-log';
 import type { OscSettings, OscTelemetry, AudioStatus } from '../shared/types';
-import { PILL_METHODS, type PillMethod } from '../shared/types';
 import { transformFont, type FontStyle } from './fontTransformer';
 import { applyTextEffects } from './textEffects';
 
@@ -42,7 +41,7 @@ export class OscManager extends EventEmitter {
   private audio: AudioStatus = { muted: false, deafened: false, changedAt: 0 };
 
   /** Global pause flag. When true, sendChatbox is a silent no-op so the
-   *  chatbox stays empty regardless of which subsystem (live loop, relay,
+   *  chatbox stays empty regardless of which subsystem (live loop,
    *  refresh, auto-responder, scheduled queue) is trying to write. This is
    *  the single chokepoint for the "Stop
    *  Everything" panic button — works because every send in the app
@@ -64,15 +63,6 @@ export class OscManager extends EventEmitter {
    *  flag, but the same final behavior at the send chokepoint. */
   private externalChatbox = false;
 
-  /** When true, apply a minimal-background ("pill") trick to every chatbox
-   *  send. Unofficial: VRChat doesn't document any of these, and the classic
-   *  one (VRCOSC's "\u0003\u001f" suffix) stopped working when VRChat moved
-   *  the client to Unity 6 (2026.3.3, Oct 2 2026) — whose reworked
-   *  TextMeshPro measures text differently. `pillMethod` picks the variant;
-   *  the Settings "Pill Lab" sends each so the user can find one that works. */
-  private chatboxPill = false;
-  private pillMethod: PillMethod = 'vrcosc';
-
   static readonly MAX_LEN = 144;
 
   setChatboxFont(style: FontStyle): void {
@@ -89,12 +79,6 @@ export class OscManager extends EventEmitter {
   }
   isExternalChatbox(): boolean {
     return this.externalChatbox;
-  }
-  setChatboxPill(v: boolean): void {
-    this.chatboxPill = v;
-  }
-  setPillMethod(m: PillMethod | undefined): void {
-    this.pillMethod = m && PILL_METHODS.includes(m) ? m : 'vrcosc';
   }
 
   setPaused(p: boolean): void {
@@ -245,8 +229,8 @@ export class OscManager extends EventEmitter {
 
   /** Clamp to `max` UTF-16 units — what VRChat actually counts (its 144 limit
    *  is C# string.Length). Counting codepoints let emoji / astral glyphs
-   *  overshoot, so VRChat cut the END off the message — lyric tails and the
-   *  pill suffix were the first casualties. Never splits a surrogate pair. */
+   *  overshoot, so VRChat cut the END off the message — lyric tails were the
+   *  first casualty. Never splits a surrogate pair. */
   static clampTo(text: string, max: number): string {
     if (text.length <= max) return text;
     let out = '';
@@ -255,22 +239,6 @@ export class OscManager extends EventEmitter {
       out += ch;
     }
     return out;
-  }
-
-  /** Build a minimal-background ("pill") variant of `text`. Line breaks are
-   *  swapped first (same length), then the body is capped so the suffix
-   *  always lands inside the 144-unit limit — VRChat truncating it away was
-   *  one silent way the trick could fail.
-   *    legacy  \n kept,      + \u0003\u001f  (pre-Unity-6 trick)
-   *    vrcosc  \n → \v,      + \u0003\u001f  (exact VRCOSC pipeline)
-   *    etx     \n → \v,      + \u0003        (end-of-text only)
-   *    us      \n → \v,      + \u001f        (unit separator only)
-   *    lsep    \n → U+2028,  + \u0003\u001f  (TMP's line-separator path) */
-  static applyPill(text: string, method: PillMethod): string {
-    const brk = method === 'legacy' ? '\n' : method === 'lsep' ? ' ' : '\v';
-    const body = brk === '\n' ? text : text.replace(/\n/g, brk);
-    const suffix = method === 'etx' ? '\u0003' : method === 'us' ? '\u001F' : '\u0003\u001F';
-    return OscManager.clampTo(body, OscManager.MAX_LEN - suffix.length) + suffix;
   }
 
   private ensureClient(): Client {
@@ -299,24 +267,7 @@ export class OscManager extends EventEmitter {
     // font style. Both are no-ops when their setting is off.
     const effected = this.chatboxMarkdown ? applyTextEffects(text) : text;
     const styled = transformFont(effected, this.chatboxFont);
-    // Pill variant when enabled. Skipped for an empty clear() so a suffix is
-    // never sent on its own.
-    const msg =
-      this.chatboxPill && styled !== ''
-        ? OscManager.applyPill(styled, this.pillMethod)
-        : OscManager.clamp(styled);
-    return this.writeChatbox(msg, sendImmediately, playSound);
-  }
-
-  /** Pill Lab: send one test message with a specific variant, ignoring the
-   *  current pill setting. 'richtext' sends literal TMP tags un-styled, to
-   *  probe whether the Unity 6 client now parses rich text in the chatbox
-   *  (if it does, <size>/<line-height> become a real way to shrink it). */
-  sendPillTest(text: string, method: PillMethod | 'richtext'): Promise<void> {
-    if (this.paused || this.externalChatbox) return Promise.resolve();
-    if (method === 'richtext') return this.writeChatbox(OscManager.clamp(text), true, false);
-    const styled = transformFont(text, this.chatboxFont);
-    return this.writeChatbox(OscManager.applyPill(styled, method), true, false);
+    return this.writeChatbox(OscManager.clamp(styled), sendImmediately, playSound);
   }
 
   private writeChatbox(msg: string, sendImmediately: boolean, playSound: boolean): Promise<void> {

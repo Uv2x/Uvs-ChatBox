@@ -10,7 +10,6 @@ import type {
   AppState,
   UiModes,
   AutoResponderConfig,
-  RelayConfig,
 } from './core';
 
 export * from './core';
@@ -220,9 +219,6 @@ export interface AppSettings {
   /** Per-feature master toggles (everything modular). */
   featureToggles: Record<string, boolean>;
 
-  /** HUD-style status rotation; see relay.ts. Optional for back-compat. */
-  relay?: RelayConfig;
-
   /** Scheduled send-later queue. Each entry fires its `text` through the
    *  engine at `fireAt` (epoch ms). Persisted so the queue survives a
    *  restart; the main process processes it on a 5s tick. */
@@ -294,7 +290,7 @@ export interface AppSettings {
   activePersonaId?: string;
 
   /** Live lyrics — when on, the live loop appends the current synced lyric
-   *  line under the Now-Playing chatbox line. Independent of StatusRelay. */
+   *  line under the Now-Playing chatbox line. */
   liveLyrics?: {
     enabled: boolean;
     /** Append a romanized (kana→romaji) line under the original. */
@@ -407,12 +403,6 @@ export interface AppSettings {
    *  silenced. Persisted setting; survives restart. */
   externalChatbox?: boolean;
 
-  /** Apply a minimal-background ("pill") trick to every chatbox send. All
-   *  unofficial; the classic one broke with VRChat's Unity 6 client. */
-  chatboxPill?: boolean;
-  /** Which pill variant to use (see OscManager.applyPill). Default 'vrcosc'. */
-  pillMethod?: PillMethod;
-
   /** Anthropic / Claude AI integration. Off by default — user pastes an
    *  API key in Settings → AI to enable. Used by the ✨ line generator on
    *  Control. All calls go through src/main/ai.ts. */
@@ -482,10 +472,6 @@ export interface HealthCheck {
   /** What to do about it (only for warn / error). */
   fix?: string;
 }
-
-/** Minimal-background ("pill") chatbox variants — tried in the Pill Lab. */
-export const PILL_METHODS = ['legacy', 'vrcosc', 'etx', 'us', 'lsep'] as const;
-export type PillMethod = (typeof PILL_METHODS)[number];
 
 export interface BatteryStatus {
   available: boolean;
@@ -576,11 +562,6 @@ export const IPC = {
   APPLY_UPDATE: 'update:apply',
   UPDATE_STATUS: 'update:status',
   HOTKEY_FIRED: 'hotkey:fired',
-  // ---- Status relay ----
-  RELAY_GET_CONFIG: 'relay:getConfig',
-  RELAY_SAVE_CONFIG: 'relay:saveConfig',
-  RELAY_STATUS: 'relay:status',
-  RELAY_FORCE_ADVANCE: 'relay:forceAdvance',
   // ---- Speech to text ----
   STT_START: 'stt:start',
   STT_STOP: 'stt:stop',
@@ -631,8 +612,6 @@ export const IPC = {
   QUEST_BATTERY_RESCAN: 'quest:batteryRescan',
   // ---- Live lyrics source health (LRCLib) ----
   LYRICS_STATUS: 'lyrics:status',
-  // ---- Pill Lab: send one test message with a given pill variant ----
-  PILL_TEST: 'pill:test',
   // ---- System Check: health of every outside service ----
   SYSTEM_CHECK: 'health:check',
   // ---- Updater: install a downloaded update (quit + run installer) ----

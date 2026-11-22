@@ -37,7 +37,7 @@ import { BatteryPanel, VrNotifyPanel, VrOverlayPanel, DiscordPanel } from './vrc
 
 /** Maps a feature-rail id to its corresponding chatbox-module id in
  *  settings.modules. Only feature rows that actually drive a chatbox line
- *  appear here; pure-UI features (STT, Persona, Relay) are absent — they
+ *  appear here; pure-UI features (STT, Persona) are absent — they
  *  don't have a module toggle. */
 const FEATURE_TO_MODULE: Record<string, ModuleId> = {
   audio: 'audiostatus',
@@ -438,7 +438,6 @@ export function App() {
     settings?.ui ?? {
       launchMode: 'desktop',
       compact: false,
-      streamer: false,
       oled: false,
       acrylic: false,
       minimalUi: false,
@@ -575,7 +574,7 @@ export function App() {
   /** Render the chatbox-module bar at the top of a feature panel. Combines
    *  the on/off switch, reorder arrows, and template editor that used to
    *  live on the dedicated Modules tab. Returns null for features that
-   *  don't correspond to a chatbox module (Persona, Relay, etc.). */
+   *  don't correspond to a chatbox module (Persona, etc.). */
   const renderModuleHeader = (featureId: string) => {
     const moduleId = FEATURE_TO_MODULE[featureId];
     if (!moduleId) return null;
@@ -970,9 +969,9 @@ export function App() {
                   {/* AFK */}
                   {/* Spotify (and any other Windows Media Session source).
                   The module header at the top controls the chatbox "now
-                  playing" line. The lyrics toggle below controls whether
-                  the StatusRelay's lyrics slot is enabled, so it's all
-                  music-related controls in one place. */}
+                  playing" line. The lyrics toggle below adds the synced
+                  lyric line, so it's all music-related controls in one
+                  place. */}
                   {featureModule === 'media' && (
                     <SpotifyPanel
                       settings={settings}
@@ -1230,9 +1229,8 @@ export function App() {
                       <h3>🖥️ PC Components</h3>
                       {renderModuleHeader('pc')}
                       <p className="small muted">
-                        Enable the PC&nbsp;Components module on the Modules tab to surface this line
-                        in the chatbox. Toggle the individual parts below to show only what you
-                        want.
+                        Turn the switch above on to show this line in the chatbox, then pick which
+                        parts to include.
                       </p>
                       <label className="chk">
                         <input

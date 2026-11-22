@@ -70,23 +70,3 @@ export const ActionArraySchema = z.array(ActionSchema).max(256);
 export const MessageTextSchema = z.string().max(4096);
 export const TypingSchema = z.boolean();
 export const IdSchema = z.string().min(1).max(128);
-
-export const RelaySlotSchema = z.object({
-  id: z.string().min(1).max(128),
-  kind: z.enum(['pcMetrics', 'audioStatus', 'nowPlaying', 'currentStatus', 'custom']),
-  enabled: z.boolean(),
-  holdMs: z.number().int().min(1000).max(600_000).optional(),
-  text: z.string().max(512).optional(),
-});
-
-export const RelayConfigSchema = z.object({
-  enabled: z.boolean(),
-  defaultHoldMs: z.number().int().min(2000).max(600_000),
-  keepAliveMs: z.number().int().min(2000).max(60_000),
-  slots: z.array(RelaySlotSchema).max(32),
-  batteryCriticalPct: z.number().int().min(1).max(100),
-});
-
-export type AppSettingsInput = z.infer<typeof AppSettingsSchema>;
-export type ActionInput = z.infer<typeof ActionSchema>;
-export type RelayConfigInput = z.infer<typeof RelayConfigSchema>;

@@ -1,16 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { AppSettings, UiModes, PillMethod, UpdateStatus } from '../shared/types';
+import type { AppSettings, UiModes, UpdateStatus } from '../shared/types';
 import { orderedFeatures } from './featureList';
-
-/** Pill Lab variants. Letters match the "PILL TEST A…F" message in-game. */
-const PILL_LAB: { id: PillMethod | 'richtext'; letter: string; desc: string }[] = [
-  { id: 'legacy', letter: 'A', desc: 'Classic trick (worked before Unity 6)' },
-  { id: 'vrcosc', letter: 'B', desc: 'VRCOSC-style: vertical-tab line breaks + classic suffix' },
-  { id: 'etx', letter: 'C', desc: 'End-of-text character only' },
-  { id: 'us', letter: 'D', desc: 'Unit-separator character only' },
-  { id: 'lsep', letter: 'E', desc: 'Unicode line-separator breaks + classic suffix' },
-  { id: 'richtext', letter: 'F', desc: 'Check: does the chatbox now render <b>/<size> tags?' },
-];
 
 /** Reorder the Features sidebar list with up/down controls. Writes the id
  *  order to settings.featureOrder; App reads it via orderedFeatures(). */
@@ -175,12 +165,6 @@ export function SettingsPanel(props: {
         hint="Dense layout for in-game multitasking"
         checked={settings.ui.compact}
         onChange={(v) => setUi({ compact: v })}
-      />
-      <Toggle
-        label="Streamer"
-        hint="Large high-contrast targets"
-        checked={settings.ui.streamer}
-        onChange={(v) => setUi({ streamer: v })}
       />
       <Toggle
         label="OLED"
@@ -349,66 +333,6 @@ export function SettingsPanel(props: {
           Both apps can run at the same time.
         </p>
       )}
-
-      {/* Pill / minimal-background chatbox. Every method is an unofficial
-          text trick. The classic one (VRCOSC's U+0003 U+001F suffix) broke when
-          VRChat moved players to Unity 6 (2026.3.3, Oct 2 2026). Tested in-game
-          Oct 31 2026: Pill Lab variants A–E all render the standard bubble, F
-          shows tags as literal text, and /chatbox/input has no style argument.
-          Kept so the user can re-check after future VRChat updates. */}
-      <h3 className="ctl-h">Pill Chatbox (minimal background)</h3>
-      <p className="set-hint" style={{ color: 'var(--danger)' }}>
-        ⚠ <b>Not working in VRChat right now.</b> Since VRChat moved to <b>Unity 6</b> (Oct 2,
-        2026), its chatbox ignores every known pill trick and shows formatting tags as plain text
-        (all tested Oct 31, 2026). Keep this <b>off</b> — it only uses up characters. If VRChat
-        brings minimal backgrounds back, re-check with the Pill Lab below.
-      </p>
-      <Toggle
-        label="Use pill / minimal background (not working in current VRChat)"
-        hint="Off recommended — VRChat currently ignores it; costs 1–2 characters per message"
-        checked={!!settings.chatboxPill}
-        onChange={(v) => onPersist({ ...settings, chatboxPill: v })}
-      />
-      <label className="row small mt">
-        <span style={{ minWidth: 90 }}>Pill method</span>
-        <select
-          className="mini-input"
-          value={settings.pillMethod ?? 'vrcosc'}
-          onChange={(e) => onPersist({ ...settings, pillMethod: e.target.value as PillMethod })}
-        >
-          {PILL_LAB.filter((v) => v.id !== 'richtext').map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.letter} — {v.desc}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <h4 className="mini-h mt">🧪 Pill Lab — re-check after VRChat updates</h4>
-      <p className="set-hint">
-        With VRChat open, click a letter: your chatbox shows a two-line <b>PILL TEST</b> message for
-        12 seconds (live updates pause so nothing covers it). If one ever looks slim again, turn the
-        pill on and choose that letter as the Pill method above.
-      </p>
-      <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
-        {PILL_LAB.map((v) => (
-          <button
-            key={v.id}
-            className="btn ghost"
-            title={v.desc}
-            onClick={async () => {
-              const r = await window.chatbox.pillTest(v.id);
-              flash(
-                r.ok
-                  ? `Sent test ${v.letter} — look at your chatbox (${r.holdSec ?? 12}s)`
-                  : `Test failed: ${r.error ?? 'unknown'}`,
-              );
-            }}
-          >
-            {v.letter}
-          </button>
-        ))}
-      </div>
 
       {/* Chatbox font — minimal Unicode style picker. ASCII letters get
           mapped to small-caps or fullwidth codepoints before send. */}

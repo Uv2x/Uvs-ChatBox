@@ -3,8 +3,8 @@ import type { AppSettings } from '../shared/types';
 import { renderBar, BAR_STYLES, type BarStyle } from '../shared/progressBar';
 
 /** "Spotify" feature panel — controls the now-playing chatbox module AND
- *  the standalone Live Lyrics toggle. Lyrics no longer live inside the
- *  StatusRelay; turning the toggle on appends the current synced lyric line
+ *  the standalone Live Lyrics toggle. Turning the toggle on appends the
+ *  current synced lyric line
  *  under the song-info line in the chatbox while the live loop is running.
  *
  *  Despite the name "Spotify", the data source is Windows Media Session

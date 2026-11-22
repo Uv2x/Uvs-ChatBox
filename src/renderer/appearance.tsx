@@ -57,7 +57,7 @@ export function useAppearance(appearance: AppSettings['appearance']) {
 
 /**
  * Applies UI/launch modes (spec §1/§9) as data-attributes on <html>, which
- * the stylesheet keys off: OLED, acrylic, compact, streamer, minimal, and the
+ * the stylesheet keys off: OLED, acrylic, compact, minimal, and the
  * desktop/vr layout variant. Keeping these as attributes means zero per-mode
  * component branching — it's all CSS.
  */
@@ -66,7 +66,6 @@ export function useUiModes(ui: UiModes) {
     const r = document.documentElement;
     r.dataset.mode = ui.launchMode; // 'desktop' | 'vr'
     r.dataset.compact = ui.compact ? '1' : '0';
-    r.dataset.streamer = ui.streamer ? '1' : '0';
     r.dataset.oled = ui.oled ? '1' : '0';
     r.dataset.acrylic = ui.acrylic ? '1' : '0';
     r.dataset.minimal = ui.minimalUi ? '1' : '0';

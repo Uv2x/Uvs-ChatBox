@@ -22,8 +22,6 @@ import type {
   LivePayload,
   UpdateStatus,
   HealthCheck,
-  RelayConfig,
-  RelayStatus,
   SttPushEvent,
   MediaInfo,
   AfkState,
@@ -69,13 +67,6 @@ const api = {
     sub<{ type: string; id: string }>(IPC.HOTKEY_FIRED, cb),
   onUpdateStatus: (cb: (s: UpdateStatus) => void) => sub<UpdateStatus>(IPC.UPDATE_STATUS, cb),
 
-  // ---- Status relay ----
-  getRelayConfig: (): Promise<RelayConfig> => ipcRenderer.invoke(IPC.RELAY_GET_CONFIG),
-  saveRelayConfig: (c: RelayConfig): Promise<boolean> =>
-    ipcRenderer.invoke(IPC.RELAY_SAVE_CONFIG, c),
-  forceRelayAdvance: (): Promise<boolean> => ipcRenderer.invoke(IPC.RELAY_FORCE_ADVANCE),
-  onRelayStatus: (cb: (s: RelayStatus) => void) => sub<RelayStatus>(IPC.RELAY_STATUS, cb),
-
   // ---- VRCOSC-ported: Weather ----
   getWeather: (): Promise<{
     available: boolean;
@@ -96,8 +87,6 @@ const api = {
     ipcRenderer.invoke(IPC.VR_NOTIFY_TEST),
   getLyricsStatus: (): Promise<{ available: boolean; error: string; retryInSec: number }> =>
     ipcRenderer.invoke(IPC.LYRICS_STATUS),
-  pillTest: (method: string): Promise<{ ok: boolean; error?: string; holdSec?: number }> =>
-    ipcRenderer.invoke(IPC.PILL_TEST, { method }),
   systemCheck: (): Promise<HealthCheck[]> => ipcRenderer.invoke(IPC.SYSTEM_CHECK),
   installUpdate: (): Promise<boolean> => ipcRenderer.invoke(IPC.INSTALL_UPDATE),
   getDiscordStatus: (): Promise<{ state: string; error: string }> =>

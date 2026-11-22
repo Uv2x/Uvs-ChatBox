@@ -129,7 +129,6 @@ const DEFAULTS: AppSettings = {
     { id: 'vrchatVR', label: 'VRChat (VR)', icon: '🥽', text: '🥽 In VRChat (VR)' },
     { id: 'vrchatDesktop', label: 'VRChat (Desktop)', icon: '🖥️', text: '🖥️ In VRChat (Desktop)' },
     { id: 'music', label: 'Music', icon: '🎵', text: '🎵 Listening to music' },
-    { id: 'streaming', label: 'Streaming', icon: '🔴', text: '🔴 Live' },
     // Extra pre-made statuses (VRChat-flavored). New ids are auto-injected
     // into existing users' saved settings by merge(), so everyone gets them.
     { id: 'chilling', label: 'Chilling', icon: '😎', text: '😎 Just chilling' },
@@ -226,7 +225,6 @@ const DEFAULTS: AppSettings = {
   ui: {
     launchMode: 'desktop',
     compact: false,
-    streamer: false,
     oled: false,
     acrylic: false,
     minimalUi: false,
@@ -310,13 +308,6 @@ const DEFAULTS: AppSettings = {
   // chatbox display. Avatar parameters, status, AI, monitoring all keep
   // working. Default false.
   externalChatbox: false,
-  // Minimal-background pill: append U+0003 U+001F to chatbox sends so VRChat
-  // draws the slim pill background — the same trick as VRCOSC's "Use Minimal
-  // Background". Unofficial (VRChat doesn't document it). Default false.
-  chatboxPill: false,
-  // Pill variant (Pill Lab letter B). The classic 'legacy' (A) suffix broke
-  // with VRChat's Unity 6 client, so default to the VRCOSC-style pipeline.
-  pillMethod: 'vrcosc' as const,
   // Pinning manual sends: ON by default per user request. Every text the
   // user types into the manual textarea + sends is also injected as a
   // prepended chatbox line on each live tick, so it doesn't disappear
@@ -333,6 +324,44 @@ const DEFAULTS: AppSettings = {
   pinManualMax: 10,
 };
 
+/** Older settings.json files still carry the keys of features that were
+ *  removed (Macros & Timelines, Status Relay, Pill Chatbox, Streamer mode,
+ *  the unused AI switches, the second AFK timer). Strip them on load so they
+ *  don't linger forever. Also drops the default "Streaming" status (only if
+ *  unchanged) and moves anyone on the removed Streamer persona to Chill. */
+function dropRemovedFeatures(s: AppSettings): AppSettings {
+  const strip = <T extends object>(obj: T, keys: string[]): T => {
+    const copy = { ...obj } as Record<string, unknown>;
+    for (const k of keys) delete copy[k];
+    return copy as T;
+  };
+  const statuses = s.statuses.filter((st) => !(st.id === 'streaming' && st.text === '🔴 Live'));
+  const streamingGone = statuses.length !== s.statuses.length;
+  return {
+    ...strip(s, ['macros', 'timelines', 'relay', 'chatboxPill', 'pillMethod']),
+    statuses,
+    state: streamingGone
+      ? {
+          ...s.state,
+          currentStatusId:
+            s.state.currentStatusId === 'streaming' ? 'available' : s.state.currentStatusId,
+          pinnedItems: (s.state.pinnedItems ?? []).filter((p) => p.key !== 'status:streaming'),
+        }
+      : s.state,
+    activePersonaId: s.activePersonaId === 'streamer' ? 'chill' : s.activePersonaId,
+    ui: strip(s.ui, ['streamer']),
+    autoResponder: strip(s.autoResponder, ['afterMin']),
+    featureToggles: strip(s.featureToggles, [
+      'quickPhrases',
+      'macros',
+      'timelines',
+      'refreshLoop',
+      'autoResponder',
+    ]),
+    ...(s.ai ? { ai: strip(s.ai, ['features', 'wakeWord']) } : {}),
+  };
+}
+
 export class SettingsStore {
   private file: string;
   private cache: AppSettings = DEFAULTS;
@@ -345,7 +374,7 @@ export class SettingsStore {
     try {
       const raw = await fs.readFile(this.file, 'utf-8');
       const parsed = JSON.parse(raw) as Partial<AppSettings>;
-      this.cache = this.merge(DEFAULTS, parsed);
+      this.cache = dropRemovedFeatures(this.merge(DEFAULTS, parsed));
     } catch {
       this.cache = DEFAULTS;
     }

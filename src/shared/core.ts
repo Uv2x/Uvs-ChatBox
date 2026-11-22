@@ -20,9 +20,9 @@ export interface StatusDef {
 // ----------------------------------------------------------------------------
 
 export type Action =
-  // bypassDedupe: used by StatusRelay's keep-alive — re-send the *same* text
-  // every keepAliveMs so VRChat's chatbox doesn't time out. SafetyGuard
-  // normally drops identical sends; this flag lets the relay opt out.
+  // bypassDedupe: used by the keep-alive (refresh loop) — re-send the *same*
+  // text so VRChat's chatbox doesn't time out. SafetyGuard normally drops
+  // identical sends; this flag lets the keep-alive opt out.
   // pinKey: optional identity for the pinned-cycle slot. Defaults to
   // 'manual' (so manual sends share one slot — typing replaces the
   // previous manual line). Phrases pass 'phrase:<id>' so each phrase
@@ -185,7 +185,6 @@ export type LaunchMode = 'desktop' | 'vr';
 export interface UiModes {
   launchMode: LaunchMode;
   compact: boolean; // dense layout for in-game multitasking
-  streamer: boolean; // streamer-friendly layout
   oled: boolean; // pure-black, low glow
   acrylic: boolean; // transparent/blur window
   minimalUi: boolean; // hide non-essential chrome
@@ -197,62 +196,6 @@ export interface UiModes {
 // ----------------------------------------------------------------------------
 // AUTOMATION (spec §14C) — auto AFK responder
 // ----------------------------------------------------------------------------
-
-// ----------------------------------------------------------------------------
-// STATUS RELAY (HUD-style rotating chatbox)
-// ----------------------------------------------------------------------------
-
-/** A slot in the relay's rotation. Each kind has a built-in producer
- *  (see relay.ts). 'custom' lets users pin a free-text slot. */
-export type RelaySlotKind =
-  | 'pcMetrics'
-  | 'audioStatus'
-  | 'nowPlaying'
-  | 'currentStatus' // The user's active status (Available/AFK/Busy/...).
-  | 'custom';
-
-export interface RelaySlot {
-  id: string;
-  kind: RelaySlotKind;
-  enabled: boolean;
-  /** Override the relay's defaultHoldMs for this slot only. */
-  holdMs?: number;
-  /** For 'custom' only. Ignored for built-in producers. */
-  text?: string;
-}
-
-export interface RelayConfig {
-  enabled: boolean;
-  /** Default time each slot occupies the chatbox before rotating. */
-  defaultHoldMs: number;
-  /** Re-send the active line after this long with no other writes, so the
-   *  VRChat chatbox doesn't auto-clear. ~6000 is safe (chatbox clears ~20s). */
-  keepAliveMs: number;
-  slots: RelaySlot[];
-  /** Battery percentage at/below which an alert fires. */
-  batteryCriticalPct: number;
-}
-
-export type AlertPriority = 'critical' | 'normal';
-
-export interface RelayAlert {
-  id: string;
-  priority: AlertPriority;
-  text: string;
-  /** Total time the alert occupies the chatbox before expiring. */
-  holdMs: number;
-  /** Epoch ms when this alert should stop being shown. */
-  expiresAt: number;
-}
-
-/** Pushed to the renderer so the UI can show "currently displaying X". */
-export interface RelayStatus {
-  enabled: boolean;
-  activeSlotId: string | null;
-  activeText: string;
-  alertCount: number;
-  lastSentAt: number;
-}
 
 export interface AutoResponderConfig {
   enabled: boolean;

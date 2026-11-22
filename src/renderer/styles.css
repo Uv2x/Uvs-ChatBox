@@ -2376,38 +2376,6 @@ body::before {
   font-size: 12px !important;
 }
 
-/* Streamer: oversized everything for high-contrast readability on stream.
- * Hides telemetry/noise so an OBS source crop only catches the useful chrome. */
-:root[data-streamer='1'] {
-  font-size: 16px;
-}
-:root[data-streamer='1'] .status-strip,
-:root[data-streamer='1'] .tele-grid,
-:root[data-streamer='1'] .telemetry {
-  display: none !important;
-}
-:root[data-streamer='1'] .phrase-btn,
-:root[data-streamer='1'] .status-btn,
-:root[data-streamer='1'] .run-btn,
-:root[data-streamer='1'] .tab {
-  font-size: 16px !important;
-  padding: 14px 18px !important;
-}
-:root[data-streamer='1'] .live-badge {
-  font-size: 16px !important;
-  padding: 10px 22px !important;
-}
-:root[data-streamer='1'] .hud-state {
-  font-size: 20px !important;
-}
-:root[data-streamer='1'] .brand h1 {
-  font-size: 22px !important;
-  letter-spacing: 1px;
-}
-:root[data-streamer='1'] .msg-input {
-  font-size: 17px !important;
-}
-
 /* Minimal UI: hide ALL non-essential chrome. The chatbox + preview + tabs
  * are the only things that remain. */
 :root[data-minimal='1'] .telemetry,

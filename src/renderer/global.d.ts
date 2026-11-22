@@ -13,8 +13,6 @@ import type {
   AppState,
   HistoryEntry,
   ConnStatus,
-  RelayConfig,
-  RelayStatus,
   SttPushEvent,
   UpdateStatus,
 } from '../shared/types';
@@ -69,10 +67,6 @@ export interface ChatboxApi {
   onConnUpdate(cb: (c: ConnStatus) => void): () => void;
   onHotkeyFired(cb: (info: { type: string; id: string }) => void): () => void;
   onUpdateStatus(cb: (s: UpdateStatus) => void): () => void;
-  getRelayConfig(): Promise<RelayConfig>;
-  saveRelayConfig(c: RelayConfig): Promise<boolean>;
-  forceRelayAdvance(): Promise<boolean>;
-  onRelayStatus(cb: (s: RelayStatus) => void): () => void;
   // VRCOSC-ported.
   getWeather(): Promise<{
     available: boolean;
@@ -89,7 +83,6 @@ export interface ChatboxApi {
   ): Promise<{ ok: boolean; reachable: boolean; ms: number | null; error?: string }>;
   vrNotifyTest(): Promise<{ ok: boolean; error?: string; debug?: string }>;
   getLyricsStatus(): Promise<{ available: boolean; error: string; retryInSec: number }>;
-  pillTest(method: string): Promise<{ ok: boolean; error?: string; holdSec?: number }>;
   systemCheck(): Promise<import('../shared/types').HealthCheck[]>;
   installUpdate(): Promise<boolean>;
   getDiscordStatus(): Promise<{ state: string; error: string }>;

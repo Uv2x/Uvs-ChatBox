@@ -170,10 +170,6 @@ export class ActionEngine extends EventEmitter {
         const text = this.substitute(action.text);
         const pinning = settings.pinSentMessages !== false;
         const pinSlotKey = action.pinKey ?? 'manual';
-        // Relay-OWNED chatbox short-circuits the pin route entirely.
-        // When the relay is on, IT decides what shows up in the chatbox
-        // by sending one short line per tick, so pins must not interfere.
-        const relayOwnsChatbox = settings.relay?.enabled === true;
         // PIN PATH: when pinning is enabled, adding text to the cycle is a
         // pure STATE change. It must NOT pass through the SafetyGuard (its
         // 3/sec rate limit + dedupe would silently drop rapid pins — the
@@ -183,7 +179,7 @@ export class ActionEngine extends EventEmitter {
         // `noPin` senders (refresh-loop keep-alive) skip this — their text
         // is already pinned under its real key; re-pinning here would
         // duplicate it into the default 'manual' slot.
-        if (pinning && !relayOwnsChatbox && !action.noPin) {
+        if (pinning && !action.noPin) {
           this.setState({
             lastSentText: text,
             lastSentAt: Date.now(),
@@ -192,7 +188,7 @@ export class ActionEngine extends EventEmitter {
           this.emit('request-tick');
           return { ok: true, describe: `Pinned + cycled: ${text}` };
         }
-        // One-shot path (pinning disabled or relay owns chatbox): this
+        // One-shot path (pinning disabled, or a keep-alive resend): this
         // really is a single send, so the safety gate applies.
         const key = `send:${text}`;
         const gate = this.safety.check(key, text, undefined, action.bypassDedupe);
@@ -218,7 +214,6 @@ export class ActionEngine extends EventEmitter {
           if (text) {
             const pinKey = `status:${action.statusId}`;
             const pinning = settings.pinSentMessages !== false;
-            const relayOwnsChatbox = settings.relay?.enabled === true;
             // PIN PATH: pinning a status is a pure STATE change, not a
             // one-shot send. It must NOT go through the SafetyGuard (which
             // rate-limits past ~3/sec and would silently drop the 3rd+ pin
@@ -226,7 +221,7 @@ export class ActionEngine extends EventEmitter {
             // loop to already be running. We just write the pin slot and
             // emit request-tick; main auto-starts the cycle loop if needed,
             // and that loop owns the actual OSC send + dedupe.
-            if (pinning && !relayOwnsChatbox) {
+            if (pinning) {
               this.setState({
                 lastSentText: text,
                 lastSentAt: Date.now(),
@@ -235,7 +230,7 @@ export class ActionEngine extends EventEmitter {
               this.emit('request-tick');
               return { ok: true, describe: `Pinned status: ${status.label}` };
             }
-            // Fallback: pinning disabled or relay owns chatbox — one-shot
+            // Fallback: pinning disabled — one-shot
             // send via dispatch(sendText), which passes through the safety
             // gate (correct, since here it really is a one-shot send).
             await this.dispatch({ kind: 'sendText', text, pinKey });

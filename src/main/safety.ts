@@ -51,7 +51,7 @@ export class SafetyGuard {
       }
     }
 
-    // Duplicate debounce. StatusRelay keep-alive sends pass bypassDedupe to
+    // Duplicate debounce. Keep-alive (refresh loop) sends pass bypassDedupe to
     // re-send identical text on purpose (VRChat chatbox would otherwise time
     // out). Rate-limit + cooldown still apply.
     if (!bypassDedupe && dedupeText !== undefined && this.cfg.dedupeWindowMs > 0) {

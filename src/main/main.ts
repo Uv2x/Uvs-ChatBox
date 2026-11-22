@@ -27,7 +27,6 @@ import { formatChatbox, formatSingleModule, pickClip } from './formatter';
 import { SafetyGuard } from './safety';
 import { ActionEngine } from './engine';
 import { AutoResponder } from './autoresponder';
-import { StatusRelay, resolveRelayConfig } from './relay';
 import { SpeechRecognizer } from './stt';
 import { LyricsService } from './lyrics';
 import { VRActivityProbe } from './vrActivity';
@@ -43,7 +42,7 @@ import { VoiceCommandMatcher } from './voiceCommands';
 import { WhisperRecognizer } from './whisperStt';
 import { WhisperDownloader } from './whisperDownloader';
 import { toRomaji, hasKana } from './romaji';
-import { IPC, PILL_METHODS, type PillMethod } from '../shared/types';
+import { IPC } from '../shared/types';
 import type {
   AppSettings,
   AudioStatus,
@@ -52,7 +51,6 @@ import type {
   AppState,
   ConnStatus,
   UpdateStatus,
-  RelayConfig,
 } from '../shared/types';
 import {
   AppSettingsSchema,
@@ -61,7 +59,6 @@ import {
   MessageTextSchema,
   TypingSchema,
   IdSchema,
-  RelayConfigSchema,
 } from '../shared/ipcSchemas';
 
 // ---- Logging (item §9) ---------------------------------------------------
@@ -192,7 +189,7 @@ function getPinnedTexts(settings: AppSettings): string[] {
   return pick ? [pick.text] : [];
 }
 // Wall-clock anchor used to estimate the current playback position between
-// Windows Media Session updates (which can be stale — see relay.ts).
+// Windows Media Session updates (which can be stale).
 let lyricsPositionBase = 0;
 let lyricsPositionAt = 0;
 let lyricsLastTrackKey = '';
@@ -226,10 +223,6 @@ let stateSaveTimer: NodeJS.Timeout | null = null;
 let lastChatboxSent = '';
 let lastChatboxSentAt = 0;
 const KEEP_ALIVE_MS = 15_000;
-// Pill Lab: while a test message is on screen, the live loop holds off so it
-// doesn't overwrite it before the user can look at it in-game.
-let chatboxHoldUntil = 0;
-const PILL_TEST_HOLD_MS = 12_000;
 // Cached compose inputs so the fast path can recompose the chatbox without
 // re-polling media / stats (those are expensive PowerShell spawns). Refreshed
 // every main-loop tick by gatherAndSend.
@@ -242,7 +235,6 @@ const stt = new SpeechRecognizer();
 let safety: SafetyGuard;
 let engine: ActionEngine;
 let autoResponder: AutoResponder;
-let relay: StatusRelay;
 let refreshTimer: NodeJS.Timeout | null = null;
 let conn: ConnStatus = { health: 'idle', lastOkAt: 0, monitor: [] };
 
@@ -418,7 +410,7 @@ function rebuildTrayMenu(): void {
     { type: 'separator' },
     {
       // Big red panic button. When ON, the OSC layer drops every outgoing
-      // chatbox packet regardless of subsystem — live loop, relay,
+      // chatbox packet regardless of subsystem — live loop,
       // refresh, autoresponder, scheduled queue.
       label: osc.isPaused() ? '▶ Resume Sending' : '⏸ Stop Everything',
       click: async () => {
@@ -926,15 +918,7 @@ async function gatherAndSendInner(settings: AppSettings): Promise<void> {
   };
   win?.webContents.send(IPC.LIVE_UPDATE, livePayload);
 
-  // While the relay owns the chatbox, the live loop only updates the renderer
-  // preview — it must NOT send, or it would race the relay's rotation.
-  const relayOwnsChatbox = resolveRelayConfig(settings).enabled;
-  if (
-    !relayOwnsChatbox &&
-    shouldSend(settings) &&
-    text.trim().length > 0 &&
-    Date.now() >= chatboxHoldUntil // a Pill Lab test is on screen
-  ) {
+  if (shouldSend(settings) && text.trim().length > 0) {
     // Content dedupe: if we just sent this exact text and the keep-alive
     // window hasn't expired, skip the send. VRChat keeps the chatbox
     // visible for ~20s without writes, so re-sending more often than
@@ -999,10 +983,7 @@ async function gatherAndSendInner(settings: AppSettings): Promise<void> {
  */
 async function lyricFastTick(settings: AppSettings): Promise<void> {
   if (!settings.liveLyrics?.enabled) return;
-  // Relay owns the chatbox when enabled — don't fight it.
-  if (resolveRelayConfig(settings).enabled) return;
   if (!shouldSend(settings)) return;
-  if (Date.now() < chatboxHoldUntil) return; // a Pill Lab test is on screen
   const m = lastMedia;
   if (!m || !m.playing || !m.title) return;
 
@@ -1091,8 +1072,6 @@ function startLive(settings: AppSettings, explicit = false): void {
   osc.setChatboxFont((settings.chatboxFont ?? 'plain') as any);
   osc.setChatboxMarkdown(!!settings.chatboxMarkdown);
   osc.setExternalChatbox(!!settings.externalChatbox);
-  osc.setChatboxPill(!!settings.chatboxPill);
-  osc.setPillMethod(settings.pillMethod);
   const interval = Math.max(1, settings.updateIntervalSec) * 1000;
   void gatherAndSend(settings);
   liveTimer = setInterval(() => void gatherAndSend(settings), interval);
@@ -1152,7 +1131,7 @@ function telemetryStop(): void {
 // type; `null` gives `unknown`. So a schema-less handler that mistakenly
 // declares the event first — `(_e: IpcMainInvokeEvent, raw) =>` — fails to
 // compile instead of silently reading its payload off the event object (that
-// swap broke the Pill Lab, the Quest ping test, and Whisper audio + downloads).
+// swap broke the Quest ping test and Whisper audio + downloads).
 type IpcInput<S> = S extends ZodSchema<infer T> ? T : unknown;
 
 function safeHandle<S extends ZodSchema | null, TOut>(
@@ -1197,13 +1176,10 @@ function registerIpc(): void {
     osc.setChatboxFont((settings.chatboxFont ?? 'plain') as any);
     osc.setChatboxMarkdown(!!settings.chatboxMarkdown);
     osc.setExternalChatbox(!!settings.externalChatbox);
-    osc.setChatboxPill(!!settings.chatboxPill);
-    osc.setPillMethod(settings.pillMethod);
     safety?.update(settings.safety);
     registerHotkeys();
     startRefreshLoop();
     autoResponder?.reconfigure();
-    relay?.reconfigure();
     applyWindowModes(settings);
     if (liveTimer) startLive(settings);
     // Start/stop the VRChat output-log tailer based on the current setting.
@@ -1236,13 +1212,10 @@ function registerIpc(): void {
     osc.setChatboxFont((fresh.chatboxFont ?? 'plain') as any);
     osc.setChatboxMarkdown(!!fresh.chatboxMarkdown);
     osc.setExternalChatbox(!!fresh.externalChatbox);
-    osc.setChatboxPill(!!fresh.chatboxPill);
-    osc.setPillMethod(fresh.pillMethod);
     safety?.update(fresh.safety);
     registerHotkeys();
     startRefreshLoop();
     autoResponder?.reconfigure();
-    relay?.reconfigure();
     applyWindowModes(fresh);
     if (fresh.vrchatLog?.enabled) vrchatLog.start();
     else vrchatLog.stop();
@@ -1382,19 +1355,6 @@ function registerIpc(): void {
   safeHandle(IPC.APPLY_UPDATE, null, () => downloadUpdate());
   safeHandle(IPC.INSTALL_UPDATE, null, () => installUpdate());
 
-  // ---- Relay ----
-  safeHandle(IPC.RELAY_GET_CONFIG, null, () => resolveRelayConfig(store.get()));
-  safeHandle(IPC.RELAY_SAVE_CONFIG, RelayConfigSchema, async (cfg) => {
-    const next: AppSettings = { ...store.get(), relay: cfg as RelayConfig };
-    await store.save(next);
-    relay.reconfigure();
-    return true;
-  });
-  safeHandle(IPC.RELAY_FORCE_ADVANCE, null, () => {
-    relay.forceAdvance();
-    return true;
-  });
-
   // ---- VRCOSC-ported IPC ----
   safeHandle(IPC.WEATHER_GET, null, async () => {
     const s = store.get();
@@ -1513,7 +1473,6 @@ function registerIpc(): void {
       registerHotkeys();
       startRefreshLoop();
       autoResponder?.reconfigure();
-      relay?.reconfigure();
       applyWindowModes(next);
       if (liveTimer) startLive(next);
       reconfigureVrchatWatch(next);
@@ -1671,30 +1630,6 @@ function registerIpc(): void {
         return { status: 'ok', detail: `Up to date (v${u.currentVersion})` };
       },
     });
-  });
-
-  // ---- Pill Lab: send one labelled test message with a given pill variant ----
-  // Two lines on purpose — the real chatbox is multi-line, so a variant only
-  // counts if it works there. The live loop is held for PILL_TEST_HOLD_MS so
-  // it can't overwrite the test, and its dedupe is reset so the normal
-  // chatbox comes straight back afterwards.
-  safeHandle(IPC.PILL_TEST, null, async (raw: unknown) => {
-    const method = String((raw as { method?: string })?.method ?? '');
-    const label = { legacy: 'A', vrcosc: 'B', etx: 'C', us: 'D', lsep: 'E' } as Record<
-      string,
-      string
-    >;
-    if (method !== 'richtext' && !(PILL_METHODS as readonly string[]).includes(method)) {
-      return { ok: false, error: 'unknown variant' };
-    }
-    chatboxHoldUntil = Date.now() + PILL_TEST_HOLD_MS;
-    lastChatboxSent = '';
-    const text =
-      method === 'richtext'
-        ? 'F: <b>BOLD?</b> <size=60%>small?</size>\nIf this looks bold/small, rich text works'
-        : `PILL TEST ${label[method]}\nsecond line`;
-    await osc.sendPillTest(text, method as PillMethod | 'richtext');
-    return { ok: true, holdSec: PILL_TEST_HOLD_MS / 1000 };
   });
 
   // ---- Discord Rich Presence status (panel polls on mount) ----
@@ -2128,19 +2063,6 @@ function wireEventSources(): void {
     const intervalMs = Math.max(1, store.get().updateIntervalSec) * 1000;
     liveTimer = setInterval(() => void gatherAndSend(store.get()), intervalMs);
   });
-
-  // ---- StatusRelay alert sources -----------------------------------------
-  // Audio mute/deaf transitions -> normal-priority alert (preempts rotation
-  // briefly to surface the change in-game).
-  osc.on('audio', (a: AudioStatus) => {
-    if (!relay) return;
-    relay.emitAlert({
-      id: `audio:${a.muted}:${a.deafened}`,
-      priority: 'normal',
-      text: a.deafened ? '🔇 Deafened' : a.muted ? '🎙️ Muted' : '🎙️ Unmuted',
-      holdMs: 4000,
-    });
-  });
 }
 
 app.whenReady().then(async () => {
@@ -2171,13 +2093,9 @@ app.whenReady().then(async () => {
   safety = new SafetyGuard(settings.safety);
   engine = new ActionEngine(osc, safety, () => store.get(), settings.state);
   autoResponder = new AutoResponder(engine, afkDet, osc, () => store.get());
-  relay = new StatusRelay(engine, sysStats, media, osc, () => store.get());
 
   registerIpc();
   wireEventSources();
-  // Forward relay status updates to the renderer. Set up here (post-construct)
-  // because wireEventSources runs before `relay` is assigned.
-  relay.on('status', (s) => win?.webContents.send(IPC.RELAY_STATUS, s));
 
   // Forward all speech-to-text events from the recognizer to the renderer.
   // The renderer drives UI state from these (ready -> show "listening",
@@ -2251,8 +2169,6 @@ app.whenReady().then(async () => {
   osc.setChatboxFont((settings.chatboxFont ?? 'plain') as any);
   osc.setChatboxMarkdown(!!settings.chatboxMarkdown);
   osc.setExternalChatbox(!!settings.externalChatbox);
-  osc.setChatboxPill(!!settings.chatboxPill);
-  osc.setPillMethod(settings.pillMethod);
   setConn({ health: 'connected', lastOkAt: Date.now() });
   createWindow();
   ensureTray();
@@ -2304,7 +2220,6 @@ app.whenReady().then(async () => {
   registerHotkeys();
   startRefreshLoop();
   autoResponder.start();
-  if (resolveRelayConfig(settings).enabled) relay.start();
   if (settings.vrchatLog?.enabled) vrchatLog.start();
 
   // Auto-start/stop the live loop with VRChat.exe. Only a loop the watcher
@@ -2363,7 +2278,6 @@ app.on('window-all-closed', () => {
   stopLive();
   stopRefreshLoop();
   autoResponder?.stop();
-  relay?.stop();
   vrchatWatch.stop();
   overlay.stop();
   batterySvc.dispose();

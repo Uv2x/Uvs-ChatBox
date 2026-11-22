@@ -66,9 +66,9 @@ export function OnboardingTour(props: {
       body: (
         <>
           <p>
-            Features → <b>🎭 AI Personality</b> presets (Chill, Streamer, Anime, Cyber, Minimal) —
-            each one ships its own phrase pack and status text, so your chatbox has a consistent
-            voice without you writing every line.
+            Features → <b>🎭 AI Personality</b> presets (Chill, Anime, Cozy, Cyber, Minimal) — each
+            one ships its own phrase pack and status text, so your chatbox has a consistent voice
+            without you writing every line.
           </p>
           <p>
             Add your own lines any time from <b>Status → Saved Messages</b>.
@@ -82,9 +82,6 @@ export function OnboardingTour(props: {
         <>
           <p>That's enough to get going. Other features worth exploring later:</p>
           <ul style={{ paddingLeft: 20, lineHeight: 1.7 }}>
-            <li>
-              📺 <b>Status Relay</b> — HUD-style rotating chatbox
-            </li>
             <li>
               🎙️ <b>Speech-to-Text</b> — dictate messages
             </li>
