@@ -37,6 +37,7 @@ import { OverlayService, type OverlayButton } from './overlay';
 import { DiscordPresence } from './discord';
 import { runSystemCheck } from './health';
 import { AiClient } from './ai';
+import type { FontStyle } from './fontTransformer';
 import { WeatherProvider } from './weather';
 import { VoiceCommandMatcher } from './voiceCommands';
 import { WhisperRecognizer } from './whisperStt';
@@ -1068,7 +1069,7 @@ function startLive(settings: AppSettings, explicit = false): void {
   if (explicit) explicitLive = true;
   stopLive();
   osc.configure(settings.osc);
-  osc.setChatboxFont((settings.chatboxFont ?? 'plain') as any);
+  osc.setChatboxFont((settings.chatboxFont ?? 'plain') as FontStyle);
   osc.setChatboxMarkdown(!!settings.chatboxMarkdown);
   osc.setExternalChatbox(!!settings.externalChatbox);
   const interval = Math.max(1, settings.updateIntervalSec) * 1000;
@@ -1172,7 +1173,7 @@ function registerIpc(): void {
     settings.state = engine.getState();
     await store.save(settings);
     osc.configure(settings.osc);
-    osc.setChatboxFont((settings.chatboxFont ?? 'plain') as any);
+    osc.setChatboxFont((settings.chatboxFont ?? 'plain') as FontStyle);
     osc.setChatboxMarkdown(!!settings.chatboxMarkdown);
     osc.setExternalChatbox(!!settings.externalChatbox);
     safety?.update(settings.safety);
@@ -1208,7 +1209,7 @@ function registerIpc(): void {
     const fresh = await store.reset();
     engine.reset(fresh.state);
     osc.configure(fresh.osc);
-    osc.setChatboxFont((fresh.chatboxFont ?? 'plain') as any);
+    osc.setChatboxFont((fresh.chatboxFont ?? 'plain') as FontStyle);
     osc.setChatboxMarkdown(!!fresh.chatboxMarkdown);
     osc.setExternalChatbox(!!fresh.externalChatbox);
     safety?.update(fresh.safety);
@@ -1505,12 +1506,17 @@ function registerIpc(): void {
   // is a thin pass-through to the AiClient method; the renderer treats
   // {ok, data|error} responses uniformly.
   safeHandle(IPC.AI_TEST, null, () => ai.testConnection());
-  safeHandle(IPC.AI_GENERATE_LINE, null, async (payload: any) => {
+  safeHandle(IPC.AI_GENERATE_LINE, null, async (raw: unknown) => {
+    const payload = (raw ?? {}) as {
+      status?: string;
+      music?: { title: string; artist: string } | null;
+      world?: string;
+    };
     const cfg = store.get().ai;
     return ai.generateLine({
-      status: payload?.status,
-      music: payload?.music ?? null,
-      world: payload?.world,
+      status: payload.status,
+      music: payload.music ?? null,
+      world: payload.world,
       persona: cfg?.persona ?? '',
     });
   });
@@ -2135,7 +2141,7 @@ app.whenReady().then(async () => {
   afkDet.setRemoteTarget(isRemoteHost(settings.osc.ip));
 
   osc.configure(settings.osc); // begin listening immediately for audio params
-  osc.setChatboxFont((settings.chatboxFont ?? 'plain') as any);
+  osc.setChatboxFont((settings.chatboxFont ?? 'plain') as FontStyle);
   osc.setChatboxMarkdown(!!settings.chatboxMarkdown);
   osc.setExternalChatbox(!!settings.externalChatbox);
   setConn({ health: 'connected', lastOkAt: Date.now() });

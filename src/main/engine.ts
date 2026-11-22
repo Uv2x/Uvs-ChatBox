@@ -123,7 +123,12 @@ export class ActionEngine extends EventEmitter {
   async run(action: Action): Promise<ActionResult> {
     try {
       const res = await this.dispatch(action);
-      this.log({ at: Date.now(), describe: res.describe, ok: res.ok, text: (action as any).text });
+      this.log({
+        at: Date.now(),
+        describe: res.describe,
+        ok: res.ok,
+        text: 'text' in action ? action.text : undefined,
+      });
       return res;
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e);
