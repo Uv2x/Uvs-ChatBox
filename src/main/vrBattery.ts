@@ -168,7 +168,7 @@ ${CS_SOURCE}
 }
 `;
 
-interface RawDevice {
+export interface RawDevice {
   kind: 'hmd' | 'controller' | 'tracker';
   /** ETrackedControllerRole for controllers: 1 = left, 2 = right. */
   role: number;
@@ -258,7 +258,7 @@ function deviceName(d: RawDevice, roles: Map<string, string>): string {
 
 /** Headset first, then left/right controllers, then trackers (SteamVR order);
  *  repeated names get numbered ("Tracker 1", "Tracker 2"). */
-function toDevices(raw: RawDevice[], roles: Map<string, string>): BatteryDevice[] {
+export function toDevices(raw: RawDevice[], roles: Map<string, string>): BatteryDevice[] {
   const rank = (d: RawDevice) =>
     d.kind === 'hmd' ? 0 : d.kind === 'controller' ? 1 + d.role / 10 : 2;
   const sorted = raw.map((d, i) => ({ d, i })).sort((a, b) => rank(a.d) - rank(b.d) || a.i - b.i);

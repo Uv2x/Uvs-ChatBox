@@ -374,6 +374,24 @@ function dropRemovedFeatures(s: AppSettings): AppSettings {
   };
 }
 
+/** May Export settings write to this path? Only when the file doesn't exist
+ *  yet or is itself a settings export (has the osc + modules keys) — never
+ *  some other file the save dialog happened to show. */
+export async function isReplaceableSettingsFile(file: string): Promise<boolean> {
+  let raw: string;
+  try {
+    raw = await fs.readFile(file, 'utf-8');
+  } catch (e) {
+    return (e as NodeJS.ErrnoException).code === 'ENOENT';
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return typeof parsed === 'object' && parsed !== null && 'osc' in parsed && 'modules' in parsed;
+  } catch {
+    return false;
+  }
+}
+
 export class SettingsStore {
   private file: string;
   private cache: AppSettings = DEFAULTS;

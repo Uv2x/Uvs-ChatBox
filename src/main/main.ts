@@ -22,7 +22,7 @@ import { StatsCollector } from './stats';
 import { BatteryCollector } from './battery';
 import { MediaCollector } from './media';
 import { AfkDetector } from './afk';
-import { SettingsStore } from './settings';
+import { SettingsStore, isReplaceableSettingsFile } from './settings';
 import { formatChatbox, formatSingleModule, pickClip } from './formatter';
 import { SafetyGuard } from './safety';
 import { ActionEngine } from './engine';
@@ -1757,24 +1757,6 @@ function stopRefreshLoop(): void {
 function setConn(patch: Partial<ConnStatus>): void {
   conn = { ...conn, ...patch };
   win?.webContents.send(IPC.CONN_UPDATE, conn);
-}
-
-/** May Export settings write to this path? Only when the file doesn't exist
- *  yet or is itself a settings export (has the osc + modules keys) — never
- *  some other file the save dialog happened to show. */
-async function isReplaceableSettingsFile(file: string): Promise<boolean> {
-  let raw: string;
-  try {
-    raw = await fsp.readFile(file, 'utf-8');
-  } catch (e) {
-    return (e as NodeJS.ErrnoException).code === 'ENOENT';
-  }
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    return typeof parsed === 'object' && parsed !== null && 'osc' in parsed && 'modules' in parsed;
-  } catch {
-    return false;
-  }
 }
 
 // ---- Built-in updater: GitHub Releases via electron-updater ----
