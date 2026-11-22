@@ -29,11 +29,14 @@ npm version patch --no-git-tag-version   # 1.1.0 → 1.1.1  (bug fixes)
 npm version minor --no-git-tag-version   # 1.1.0 → 1.2.0  (new features)
 ```
 
-### 2. Build the installer
+### 2. Test, then build the installer
 
 ```powershell
+npm test
 npm run package
 ```
+
+If any test fails, fix it before releasing.
 
 This creates three files in `release/` that matter:
 
