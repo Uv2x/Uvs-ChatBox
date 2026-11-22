@@ -62,8 +62,6 @@ export const ActionSchema = z.discriminatedUnion('kind', [
     value: z.string().max(512),
   }),
   z.object({ kind: z.literal('switchProfile'), profileId: z.string().min(1).max(128) }),
-  z.object({ kind: z.literal('runMacro'), macroId: z.string().min(1).max(128) }),
-  z.object({ kind: z.literal('runTimeline'), timelineId: z.string().min(1).max(128) }),
   z.object({ kind: z.literal('delay'), ms: z.number().int().min(0).max(60_000) }),
 ]);
 

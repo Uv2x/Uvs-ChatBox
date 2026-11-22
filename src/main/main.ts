@@ -139,14 +139,6 @@ const ai = new AiClient(() => {
       enabled: false,
       apiKey: '',
       model: 'claude-opus-4-7',
-      features: {
-        generateLine: true,
-        personaReply: true,
-        cleanupStt: true,
-        suggestPhrase: true,
-        voiceCommand: true,
-      },
-      wakeWord: 'uvy',
       persona: 'Casual, friendly, a bit playful.',
     }
   );
@@ -1369,17 +1361,6 @@ function registerIpc(): void {
     engine.runSequence(actions as Action[]),
   );
 
-  safeHandle(IPC.RUN_MACRO, IdSchema, (macroId) => engine.run({ kind: 'runMacro', macroId }));
-
-  safeHandle(IPC.RUN_TIMELINE, IdSchema, (timelineId) =>
-    engine.run({ kind: 'runTimeline', timelineId }),
-  );
-
-  safeHandle(IPC.STOP_TIMELINE, null, () => {
-    engine.stopTimeline();
-    return true;
-  });
-
   safeHandle(IPC.SWITCH_PROFILE, IdSchema, (profileId) => {
     applyProfile(profileId);
     return true;
@@ -1476,10 +1457,22 @@ function registerIpc(): void {
   safeHandle(IPC.EXPORT_SETTINGS, null, async () => {
     const { canceled, filePath } = await dialog.showSaveDialog(win ?? undefined!, {
       title: 'Export settings',
-      defaultPath: `uvs-chatbox-settings-${new Date().toISOString().slice(0, 10)}.json`,
+      // Always start in Documents with a fresh dated name. With a bare file
+      // name the dialog reopened the last folder used — that is how an
+      // export once replaced the project's package.json.
+      defaultPath: path.join(
+        app.getPath('documents'),
+        `uvs-chatbox-settings-${new Date().toISOString().slice(0, 10)}.json`,
+      ),
       filters: [{ name: 'JSON', extensions: ['json'] }],
     });
     if (canceled || !filePath) return { ok: false, reason: 'cancelled' };
+    if (!(await isReplaceableSettingsFile(filePath))) {
+      return {
+        ok: false,
+        reason: `${path.basename(filePath)} isn't a settings export, so it wasn't replaced. Pick a new file name.`,
+      };
+    }
     try {
       await fsp.writeFile(filePath, JSON.stringify(store.get(), null, 2), 'utf-8');
       log.info(`[settings] exported to ${filePath}`);
@@ -1592,18 +1585,6 @@ function registerIpc(): void {
       world: payload?.world,
       persona: cfg?.persona ?? '',
     });
-  });
-  safeHandle(IPC.AI_PERSONA_REPLY, null, async (payload: any) => {
-    const cfg = store.get().ai;
-    return ai.personaReply({
-      state: payload?.state ?? 'afk',
-      minutesIdle: Number(payload?.minutesIdle ?? 0),
-      persona: cfg?.persona ?? '',
-    });
-  });
-  safeHandle(IPC.AI_CLEANUP_STT, null, async (raw: any) => {
-    if (typeof raw !== 'string') return { ok: false, error: 'raw must be a string' };
-    return ai.cleanupStt(raw);
   });
   // ---- Auto-translate ------------------------------------------------
   // Cheap free-tier Google Translate endpoint (no key needed). For other
@@ -1824,13 +1805,6 @@ function registerHotkeys(): void {
     }
   };
 
-  // Quick/smart phrases removed — no phrase hotkeys registered.
-  for (const macro of s.macros) {
-    tryReg(macro.hotkey, () => {
-      void engine.run({ kind: 'runMacro', macroId: macro.id });
-      win?.webContents.send(IPC.HOTKEY_FIRED, { type: 'macro', id: macro.id });
-    });
-  }
   for (const profile of s.profiles) {
     tryReg(profile.hotkey, () => applyProfile(profile.id));
   }
@@ -1873,6 +1847,24 @@ function stopRefreshLoop(): void {
 function setConn(patch: Partial<ConnStatus>): void {
   conn = { ...conn, ...patch };
   win?.webContents.send(IPC.CONN_UPDATE, conn);
+}
+
+/** May Export settings write to this path? Only when the file doesn't exist
+ *  yet or is itself a settings export (has the osc + modules keys) — never
+ *  some other file the save dialog happened to show. */
+async function isReplaceableSettingsFile(file: string): Promise<boolean> {
+  let raw: string;
+  try {
+    raw = await fsp.readFile(file, 'utf-8');
+  } catch (e) {
+    return (e as NodeJS.ErrnoException).code === 'ENOENT';
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return typeof parsed === 'object' && parsed !== null && 'osc' in parsed && 'modules' in parsed;
+  } catch {
+    return false;
+  }
 }
 
 // ---- Built-in updater: GitHub Releases via electron-updater ----
@@ -2049,7 +2041,10 @@ function wireEventSources(): void {
   });
   osc.on('vrchat-vrmode', (mode: number) => afkDet.setVrchatVrMode(mode));
   // VRChat closed: its last AFK / VRMode values no longer apply.
-  vrchatWatch.on('stopped', () => afkDet.resetVrchat());
+  vrchatWatch.on('stopped', () => {
+    afkDet.resetVrchat();
+    osc.resetAudio();
+  });
 
   // Live OSC parameter monitor (spec §12).
   osc.on('monitor', (m: { address: string; value: string; at: number }) => {
@@ -2372,6 +2367,7 @@ app.on('window-all-closed', () => {
   vrchatWatch.stop();
   overlay.stop();
   batterySvc.dispose();
+  media.dispose();
   vrActivity.dispose();
   discord.stop();
   if (discordTimer) {
@@ -2388,7 +2384,6 @@ app.on('window-all-closed', () => {
     clearInterval(scheduledStatusTimer);
     scheduledStatusTimer = null;
   }
-  engine?.stopTimeline();
   globalShortcut.unregisterAll();
   osc.close();
   if (process.platform !== 'darwin') app.quit();

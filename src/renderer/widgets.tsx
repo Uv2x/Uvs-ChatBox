@@ -72,11 +72,23 @@ function Metric(props: { label: string; value: string; accent?: boolean }) {
 /** Compact audio (mute/deaf) indicator. */
 export function AudioIndicator(props: { a: AudioStatus | null }) {
   const a = props.a;
-  const state = a?.deafened ? 'deaf' : a?.muted ? 'muted' : 'open';
-  const label = state === 'deaf' ? 'DEAFENED' : state === 'muted' ? 'MUTED' : 'MIC OPEN';
+  // Until VRChat reports a mute/deafen value, show "unknown" — not a green
+  // "MIC OPEN" that's really just the default.
+  const state = !a?.heard ? 'unknown' : a.deafened ? 'deaf' : a.muted ? 'muted' : 'open';
+  const label =
+    state === 'deaf'
+      ? 'DEAFENED'
+      : state === 'muted'
+        ? 'MUTED'
+        : state === 'open'
+          ? 'MIC OPEN'
+          : 'MIC —';
   const icon = state === 'deaf' ? '🙉' : state === 'muted' ? '🔇' : '🎙';
   return (
-    <div className={`audio-pill ${state}`}>
+    <div
+      className={`audio-pill ${state}`}
+      title={state === 'unknown' ? 'Waiting for VRChat to report your mic (OSC)' : undefined}
+    >
       <span>{icon}</span>
       <span>{label}</span>
     </div>

@@ -140,8 +140,8 @@ export function WeatherPanel(props: {
         onChange={setTemplate}
       />
       <p className="small muted mt">
-        💡 Toggle tokens above; type emoji / text directly in the box. The
-        weather line only appears while <b>Live Updates</b> are running.
+        💡 Toggle tokens above; type emoji / text directly in the box. The weather line only appears
+        while <b>Live Updates</b> are running.
       </p>
     </div>
   );
@@ -226,7 +226,7 @@ export function VoiceCommandsPanel(props: { settings: AppSettings; onPersist: Pe
       </div>
       <p className="small muted mt">
         💡 Edit complex action sequences in <code>settings.json</code> (the actions field accepts
-        sendText, setStatus, clearChatbox, runMacro, etc.).
+        sendText, setStatus, clearChatbox, etc.).
       </p>
     </div>
   );

@@ -56,9 +56,6 @@ export interface ChatboxApi {
   getTelemetry(): Promise<OscTelemetry>;
   runAction(a: Action): Promise<ActionResult>;
   runActions(a: Action[]): Promise<ActionResult>;
-  runMacro(id: string): Promise<ActionResult>;
-  runTimeline(id: string): Promise<ActionResult>;
-  stopTimeline(): Promise<boolean>;
   switchProfile(id: string): Promise<boolean>;
   setStatus(id: string): Promise<ActionResult>;
   getState(): Promise<AppState>;
@@ -164,11 +161,6 @@ export interface ChatboxApi {
     music?: { title: string; artist: string } | null;
     world?: string;
   }): Promise<{ ok: boolean; data?: string; error?: string }>;
-  aiPersonaReply(ctx: {
-    state: string;
-    minutesIdle: number;
-  }): Promise<{ ok: boolean; data?: string; error?: string }>;
-  aiCleanupStt(raw: string): Promise<{ ok: boolean; data?: string; error?: string }>;
 
   // ---- Auto-translate ----
   translateText(

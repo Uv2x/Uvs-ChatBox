@@ -1,11 +1,8 @@
 // Anthropic Claude client for the chatbox app.
 //
-// Five features, all thin wrappers over `client.messages.create`:
-//   1. generateLine(ctx)        — produce a short chatbox sentence
-//   2. personaReply(ctx)        — auto-reply line in the user's voice / persona
-//   3. cleanupStt(raw)          — punctuate + capitalize a dictation transcript
-//   4. suggestPhrase(history)   — propose a new Quick Phrase to add
-//   5. interpretVoiceCommand    — parse "Uvy, set status to AFK" → { action, args }
+// Thin wrappers over `client.messages.create`:
+//   - testConnection()  — verify the key + model (Settings → AI → Test)
+//   - generateLine(ctx) — produce a short chatbox sentence (✨ on Control)
 //
 // Cost discipline:
 //  - Each call caps `max_tokens` low (chatbox is 144 chars max anyway).
@@ -30,36 +27,10 @@ export interface AiConfig {
   apiKey: string;
   /** Model id. Default 'claude-opus-4-7' (best); 'claude-haiku-4-5' for cost. */
   model: string;
-  /** Per-feature toggles so users can opt in granularly. */
-  features: {
-    generateLine: boolean;
-    personaReply: boolean;
-    cleanupStt: boolean;
-    suggestPhrase: boolean;
-    voiceCommand: boolean;
-  };
-  /** Wake word that prefixes a spoken voice command. Default "uvy". */
-  wakeWord: string;
   /** Persona / voice description fed to the model as part of the system
    *  prompt. Lets the user tune tone ("casual, kawaii, lots of emoji"). */
   persona: string;
 }
-
-export const DEFAULT_AI_CONFIG: AiConfig = {
-  enabled: false,
-  apiKey: '',
-  model: 'claude-opus-4-7',
-  features: {
-    generateLine: true,
-    personaReply: true,
-    cleanupStt: true,
-    suggestPhrase: true,
-    voiceCommand: true,
-  },
-  wakeWord: 'uvy',
-  persona:
-    'Casual, friendly, a bit playful. Likes emoji but uses them sparingly. Concise — never more than one short sentence.',
-};
 
 /** Result envelope so the renderer doesn't have to know about SDK error types. */
 export type AiResult<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -129,45 +100,10 @@ export class AiClient {
     });
   }
 
-  // ---- Feature 2: persona auto-reply -------------------------------------
-
-  /** Replacement for the dumb auto-AFK responder. Given current state,
-   *  produce a single in-character reply line. */
-  async personaReply(ctx: {
-    state: 'afk' | 'muted' | 'busy' | 'gaming';
-    minutesIdle: number;
-    persona: string;
-  }): Promise<AiResult<string>> {
-    return this.shortGeneration({
-      systemSuffix:
-        "\n\nYour job: produce ONE short line for the VRChat chatbox saying you're currently " +
-        `${ctx.state} (idle ~${ctx.minutesIdle} min). Max 80 chars. No quotes, no preamble.`,
-      user: 'Persona overrides above. State + duration are in the system prompt.',
-      maxTokens: 100,
-    });
-  }
-
-  // ---- Feature 3: clean up STT ------------------------------------------
-
-  /** Add punctuation + casing to a raw dictation transcript. Doesn't change
-   *  meaning — purely a typographic clean-up. Pass-through if model errors. */
-  async cleanupStt(raw: string): Promise<AiResult<string>> {
-    if (!raw.trim()) return { ok: true, data: raw };
-    return this.shortGeneration({
-      systemSuffix:
-        '\n\nYour job: lightly clean up a dictation transcript — add punctuation, capitalization, and fix obvious recognition errors. Preserve meaning + tone. Output ONLY the cleaned text, no quotes or preamble.',
-      user: `Transcript:\n${raw}`,
-      maxTokens: Math.min(300, raw.length * 3),
-    });
-  }
-
-  // (suggestPhrase + interpretVoiceCommand methods removed.)
-
   // ---- Shared helpers ----------------------------------------------------
 
-  /** Common code path for free-form short generations (line, persona reply,
-   *  STT cleanup). Caches the system prompt so repeated calls are ~90%
-   *  cheaper after the first one. */
+  /** Common code path for short free-form generations. Caches the system
+   *  prompt so repeated calls are ~90% cheaper after the first one. */
   private async shortGeneration(opts: {
     systemSuffix: string;
     user: string;

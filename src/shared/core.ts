@@ -1,5 +1,5 @@
 // ============================================================================
-// Phase 1 core architecture: Actions, State, Profiles, Macros, Safety.
+// Phase 1 core architecture: Actions, State, Profiles, Safety.
 // These types are shared between the main and renderer processes.
 // ============================================================================
 
@@ -15,7 +15,7 @@ export interface StatusDef {
 }
 
 // ----------------------------------------------------------------------------
-// ACTION SYSTEM (spec §6) — every button/phrase/hotkey/macro step is an Action.
+// ACTION SYSTEM (spec §6) — every button/hotkey/voice-command step is an Action.
 // One dispatcher in the main process executes these.
 // ----------------------------------------------------------------------------
 
@@ -42,8 +42,6 @@ export type Action =
   | { kind: 'clearChatbox' }
   | { kind: 'setVariable'; name: string; value: string }
   | { kind: 'switchProfile'; profileId: string }
-  | { kind: 'runMacro'; macroId: string }
-  | { kind: 'runTimeline'; timelineId: string }
   | { kind: 'delay'; ms: number };
 
 export interface ActionResult {
@@ -82,34 +80,6 @@ export interface PhraseFolder {
   id: string;
   name: string;
   color?: string;
-}
-
-// ----------------------------------------------------------------------------
-// MACRO SYSTEM (spec §7) — chained action sequences with delays.
-// ----------------------------------------------------------------------------
-
-export interface Macro {
-  id: string;
-  name: string;
-  steps: Action[]; // executed in order; 'delay' steps pause the chain
-  hotkey?: string;
-}
-
-// ----------------------------------------------------------------------------
-// TIMELINE SYSTEM (spec §8) — simulated text "animation" via timed swaps.
-// ----------------------------------------------------------------------------
-
-export interface TimelineFrame {
-  text: string;
-  /** How long to hold this frame before advancing, in ms. */
-  holdMs: number;
-}
-
-export interface Timeline {
-  id: string;
-  name: string;
-  frames: TimelineFrame[];
-  loop: boolean;
 }
 
 // ----------------------------------------------------------------------------
@@ -286,8 +256,6 @@ export interface RelayStatus {
 
 export interface AutoResponderConfig {
   enabled: boolean;
-  /** Minutes of inactivity (or mute) before auto-AFK fires. */
-  afterMin: number;
   /** Trigger on mute as well as idle. */
   onMute: boolean;
   message: string;

@@ -184,12 +184,15 @@ export class OscManager extends EventEmitter {
     const val = args[0];
     const asBool = val === true || val === 1 || val === '1';
     let changed = false;
+    let firstHeard = false;
 
     // Live parameter monitor (spec §12) — emit every inbound message.
     const at = Date.now();
     this.emit('monitor', { address, value: String(val), at });
 
     if (address === '/avatar/parameters/MuteSelf') {
+      firstHeard = !this.audio.heard;
+      this.audio.heard = true;
       if (this.audio.muted !== asBool) {
         this.audio.muted = asBool;
         changed = true;
@@ -198,6 +201,8 @@ export class OscManager extends EventEmitter {
       address === '/avatar/parameters/Earmuffs' ||
       address === '/avatar/parameters/Deafen'
     ) {
+      firstHeard = !this.audio.heard;
+      this.audio.heard = true;
       if (this.audio.deafened !== asBool) {
         this.audio.deafened = asBool;
         changed = true;
@@ -217,7 +222,17 @@ export class OscManager extends EventEmitter {
     if (changed) {
       this.audio.changedAt = Date.now();
       this.emit('audio', { ...this.audio });
+    } else if (firstHeard) {
+      // Not a change (changedAt drives the "Unmuted" announcement), but the
+      // UI can now show VRChat's real state instead of a default.
+      this.emit('audio', { ...this.audio });
     }
+  }
+
+  /** VRChat closed: what it last reported no longer applies. */
+  resetAudio(): void {
+    this.audio = { muted: false, deafened: false, changedAt: 0, heard: false };
+    this.emit('audio', { ...this.audio });
   }
 
   getAudioStatus(): AudioStatus {

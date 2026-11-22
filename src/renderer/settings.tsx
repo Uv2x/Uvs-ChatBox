@@ -146,10 +146,6 @@ export function SettingsPanel(props: {
     onPersist({ ...settings, ui: { ...settings.ui, ...patch } });
   const setSafety = (patch: Partial<AppSettings['safety']>) =>
     onPersist({ ...settings, safety: { ...settings.safety, ...patch } });
-  const setRefresh = (patch: Partial<AppSettings['refreshLoop']>) =>
-    onPersist({ ...settings, refreshLoop: { ...settings.refreshLoop, ...patch } });
-  const setAuto = (patch: Partial<AppSettings['autoResponder']>) =>
-    onPersist({ ...settings, autoResponder: { ...settings.autoResponder, ...patch } });
   const setToggle = (key: string, v: boolean) =>
     onPersist({ ...settings, featureToggles: { ...settings.featureToggles, [key]: v } });
 
@@ -654,20 +650,6 @@ export function SettingsPanel(props: {
                 <option value="claude-haiku-4-5">Haiku 4.5 — cheapest, $</option>
               </select>
             </label>
-            <label className="interval">
-              Wake word
-              <input
-                className="mini-input mono"
-                value={settings.ai?.wakeWord ?? 'uvy'}
-                onChange={(e) =>
-                  onPersist({
-                    ...settings,
-                    ai: { ...settings.ai!, wakeWord: e.target.value.toLowerCase().trim() || 'uvy' },
-                  })
-                }
-                style={{ width: 90 }}
-              />
-            </label>
             <AiTestButton flash={flash} />
           </div>
           <div className="mt">
@@ -688,35 +670,6 @@ export function SettingsPanel(props: {
               style={{ width: '100%', fontFamily: 'inherit' }}
             />
           </div>
-          <p className="set-hint mt">Per-feature toggles:</p>
-          {(['generateLine', 'personaReply', 'cleanupStt'] as const).map((f) => {
-            const labels: Record<string, string> = {
-              generateLine: '✨ Generate chatbox lines on demand',
-              personaReply: '🤖 AI auto-reply (replaces dumb AFK responder)',
-              cleanupStt: '🎙️ Clean up dictation transcripts (punctuation + casing)',
-            };
-            return (
-              <label key={f} className="chk" style={{ display: 'block', margin: '4px 0' }}>
-                <input
-                  type="checkbox"
-                  checked={settings.ai?.features?.[f] ?? true}
-                  onChange={(e) =>
-                    onPersist({
-                      ...settings,
-                      ai: {
-                        ...settings.ai!,
-                        features: {
-                          ...(settings.ai!.features ?? ({} as any)),
-                          [f]: e.target.checked,
-                        },
-                      },
-                    })
-                  }
-                />
-                {labels[f]}
-              </label>
-            );
-          })}
         </>
       )}
 
@@ -760,66 +713,20 @@ export function SettingsPanel(props: {
         </label>
       </div>
 
-      {/* Refresh loop */}
-      <h3 className="ctl-h">Refresh Loop</h3>
+      {/* Optional panels on the Control tab */}
+      <h3 className="ctl-h">Control Tab</h3>
       <Toggle
-        label="Re-send current state periodically"
-        hint="Keeps chatbox alive through VRChat resets"
-        checked={settings.refreshLoop.enabled}
-        onChange={(v) => setRefresh({ enabled: v })}
-      />
-      <label className="set-num-row">
-        <span>Interval (s)</span>
-        <input
-          type="number"
-          min={8}
-          max={30}
-          value={settings.refreshLoop.intervalSec}
-          onChange={(e) => setRefresh({ intervalSec: Number(e.target.value) })}
-        />
-      </label>
-
-      {/* Auto-responder */}
-      <h3 className="ctl-h">Auto AFK Responder</h3>
-      <Toggle
-        label="Enable auto-AFK"
-        checked={settings.autoResponder.enabled}
-        onChange={(v) => setAuto({ enabled: v })}
+        label="Show the connection monitor"
+        hint="Live list of OSC messages coming from VRChat"
+        checked={settings.featureToggles.connectionMonitor !== false}
+        onChange={(v) => setToggle('connectionMonitor', v)}
       />
       <Toggle
-        label="Also trigger on mute"
-        checked={settings.autoResponder.onMute}
-        onChange={(v) => setAuto({ onMute: v })}
+        label="Show action history"
+        hint="Recent sends, with Undo"
+        checked={settings.featureToggles.history !== false}
+        onChange={(v) => setToggle('history', v)}
       />
-      <div className="set-num-row">
-        <label>
-          After (min)
-          <input
-            type="number"
-            min={1}
-            value={settings.autoResponder.afterMin}
-            onChange={(e) => setAuto({ afterMin: Number(e.target.value) })}
-          />
-        </label>
-        <label className="grow">
-          Message
-          <input
-            value={settings.autoResponder.message}
-            onChange={(e) => setAuto({ message: e.target.value })}
-          />
-        </label>
-      </div>
-
-      {/* Feature master toggles */}
-      <h3 className="ctl-h">Features</h3>
-      {Object.entries(settings.featureToggles).map(([k, v]) => (
-        <Toggle
-          key={k}
-          label={k.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase())}
-          checked={v}
-          onChange={(nv) => setToggle(k, nv)}
-        />
-      ))}
 
       {/* Updater */}
       <h3 className="ctl-h">Updates</h3>
@@ -981,14 +888,6 @@ function aiFallback() {
     enabled: false,
     apiKey: '',
     model: 'claude-opus-4-7',
-    features: {
-      generateLine: true,
-      personaReply: true,
-      cleanupStt: true,
-      suggestPhrase: true,
-      voiceCommand: true,
-    },
-    wakeWord: 'uvy',
     persona: 'Casual, friendly, a bit playful.',
   };
 }

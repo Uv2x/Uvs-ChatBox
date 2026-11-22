@@ -42,9 +42,9 @@ export function VrNotifyPanel(props: { settings: AppSettings; onPersist: Persist
     <div className="feat">
       <h3>🔔 VR Notifications</h3>
       <p className="small muted">
-        Pops a toast <b>inside your headset</b> for key events, so you don&apos;t
-        have to check the desktop window. <b>SteamVR only</b> (Quest Link / Air
-        Link / Virtual Desktop) — a standalone Quest can&apos;t receive these.
+        Pops a toast <b>inside your headset</b> for key events, so you don&apos;t have to check the
+        desktop window. <b>SteamVR only</b> (Quest Link / Air Link / Virtual Desktop) — a standalone
+        Quest can&apos;t receive these.
       </p>
       <label className="chk">
         <input
@@ -128,15 +128,16 @@ export function ScheduledStatusPanel(props: { settings: AppSettings; onPersist: 
   const list = settings.scheduledStatuses ?? [];
   const save = (next: SchedStatus[]) => onPersist({ ...settings, scheduledStatuses: next });
 
-  const add = () => save([
-    ...list,
-    {
-      id: 'ss_' + Math.random().toString(36).slice(2, 8),
-      time: '22:00',
-      statusId: settings.statuses[0]?.id ?? '',
-      enabled: true,
-    },
-  ]);
+  const add = () =>
+    save([
+      ...list,
+      {
+        id: 'ss_' + Math.random().toString(36).slice(2, 8),
+        time: '22:00',
+        statusId: settings.statuses[0]?.id ?? '',
+        enabled: true,
+      },
+    ]);
   const update = (id: string, patch: Partial<SchedStatus>) =>
     save(list.map((s) => (s.id === id ? { ...s, ...patch } : s)));
   const remove = (id: string) => save(list.filter((s) => s.id !== id));
@@ -145,28 +146,46 @@ export function ScheduledStatusPanel(props: { settings: AppSettings; onPersist: 
     <div className="feat">
       <h3>⏰ Scheduled Status</h3>
       <p className="small muted">
-        Automatically switch to a status at a set local time — e.g. flip to
-        Sleeping at 23:00. Fires once when the clock reaches the time.
+        Automatically switch to a status at a set local time — e.g. flip to Sleeping at 23:00. Fires
+        once when the clock reaches the time.
       </p>
       {list.length === 0 && <em className="muted small">No schedules yet.</em>}
       <div className="ss-list">
         {list.map((s) => (
           <div className="ss-row row" key={s.id}>
             <label className="chk small">
-              <input type="checkbox" checked={s.enabled} onChange={(e) => update(s.id, { enabled: e.target.checked })} />
+              <input
+                type="checkbox"
+                checked={s.enabled}
+                onChange={(e) => update(s.id, { enabled: e.target.checked })}
+              />
             </label>
-            <input type="time" value={s.time} onChange={(e) => update(s.id, { time: e.target.value })} />
-            <select value={s.statusId} onChange={(e) => update(s.id, { statusId: e.target.value })} className="grow">
+            <input
+              type="time"
+              value={s.time}
+              onChange={(e) => update(s.id, { time: e.target.value })}
+            />
+            <select
+              value={s.statusId}
+              onChange={(e) => update(s.id, { statusId: e.target.value })}
+              className="grow"
+            >
               {settings.statuses.map((st) => (
-                <option key={st.id} value={st.id}>{st.icon} {st.label}</option>
+                <option key={st.id} value={st.id}>
+                  {st.icon} {st.label}
+                </option>
               ))}
             </select>
-            <button className="btn ghost tiny" onClick={() => remove(s.id)}>✕</button>
+            <button className="btn ghost tiny" onClick={() => remove(s.id)}>
+              ✕
+            </button>
           </div>
         ))}
       </div>
       <div className="row mt">
-        <button className="btn ghost" onClick={add}>+ Add schedule</button>
+        <button className="btn ghost" onClick={add}>
+          + Add schedule
+        </button>
       </div>
     </div>
   );
@@ -197,7 +216,10 @@ const DISCORD_STATE_LABEL: Record<string, { text: string; tone: 'ok' | 'warn' | 
 export function DiscordPanel(props: { settings: AppSettings; onPersist: Persist }) {
   const { settings, onPersist } = props;
   const cfg = settings.discord ?? DISCORD_DEFAULT;
-  const [status, setStatus] = useState<{ state: string; error: string }>({ state: 'off', error: '' });
+  const [status, setStatus] = useState<{ state: string; error: string }>({
+    state: 'off',
+    error: '',
+  });
   const save = (patch: Partial<DiscordCfg>) =>
     onPersist({ ...settings, discord: { ...cfg, ...patch } });
 
@@ -220,9 +242,8 @@ export function DiscordPanel(props: { settings: AppSettings; onPersist: Persist 
       <h3>💬 Discord Rich Presence</h3>
       <p className="small muted">
         Shows what you&apos;re up to on your <b>Discord profile</b> — e.g.{' '}
-        <i>Playing VRChat · In VRChat · 2h elapsed</i> — through the local Discord
-        app. No login or token; it talks to the Discord client already running on
-        this PC.
+        <i>Playing VRChat · In VRChat · 2h elapsed</i> — through the local Discord app. No login or
+        token; it talks to the Discord client already running on this PC.
       </p>
       <label className="chk">
         <input
@@ -241,15 +262,16 @@ export function DiscordPanel(props: { settings: AppSettings; onPersist: Persist 
       {/* One-time setup: a free Discord application id. */}
       <ol className="small muted" style={{ paddingLeft: 18, marginTop: 8, lineHeight: 1.6 }}>
         <li>
-          Go to <b>discord.com/developers/applications</b> → <b>New Application</b>.
-          Name it whatever you want the <b>&quot;Playing …&quot;</b> line to say
-          (e.g. <i>VRChat</i>).
+          Go to <b>discord.com/developers/applications</b> → <b>New Application</b>. Name it
+          whatever you want the <b>&quot;Playing …&quot;</b> line to say (e.g. <i>VRChat</i>).
         </li>
         <li>
-          On the app&apos;s <b>General Information</b> page, copy the{' '}
-          <b>Application ID</b> and paste it below.
+          On the app&apos;s <b>General Information</b> page, copy the <b>Application ID</b> and
+          paste it below.
         </li>
-        <li>Make sure the <b>Discord desktop app</b> is running.</li>
+        <li>
+          Make sure the <b>Discord desktop app</b> is running.
+        </li>
       </ol>
 
       <label className="grow mt small">
@@ -266,7 +288,11 @@ export function DiscordPanel(props: { settings: AppSettings; onPersist: Persist 
       <div className="row mt" style={{ gap: 8 }}>
         <label className="grow small">
           Line 1 (details)
-          <input type="text" value={cfg.details} onChange={(e) => save({ details: e.target.value })} />
+          <input
+            type="text"
+            value={cfg.details}
+            onChange={(e) => save({ details: e.target.value })}
+          />
         </label>
         <label className="grow small">
           Line 2 (state)
@@ -274,9 +300,9 @@ export function DiscordPanel(props: { settings: AppSettings; onPersist: Persist 
         </label>
       </div>
       <p className="small muted mt">
-        Tokens: <code>{'{world}'}</code> <code>{'{instanceType}'}</code>{' '}
-        <code>{'{players}'}</code> <code>{'{status}'}</code> <code>{'{title}'}</code>{' '}
-        <code>{'{artist}'}</code> <code>{'{session}'}</code> <code>{'{time}'}</code>
+        Tokens: <code>{'{world}'}</code> <code>{'{instanceType}'}</code> <code>{'{players}'}</code>{' '}
+        <code>{'{status}'}</code> <code>{'{title}'}</code> <code>{'{artist}'}</code>{' '}
+        <code>{'{session}'}</code> <code>{'{time}'}</code>
       </p>
 
       <label className="chk mt">
@@ -291,8 +317,8 @@ export function DiscordPanel(props: { settings: AppSettings; onPersist: Persist 
       <details className="mt">
         <summary className="small muted">Optional artwork</summary>
         <p className="small muted mt">
-          Upload art under <b>Rich Presence → Art Assets</b> in the Discord app,
-          then put an asset&apos;s <b>name</b> here as the large image.
+          Upload art under <b>Rich Presence → Art Assets</b> in the Discord app, then put an
+          asset&apos;s <b>name</b> here as the large image.
         </p>
         <div className="row" style={{ gap: 8 }}>
           <label className="grow small">
@@ -342,11 +368,10 @@ export function VrOverlayPanel(props: { settings: AppSettings; onPersist: Persis
     <div className="feat">
       <h3>🎛️ VR Overlay (control panel)</h3>
       <p className="small muted">
-        A laser-clickable panel in VR — switch status, clear pins, and toggle
-        dictation without taking the headset off. Choose a <b>dashboard tab</b>
+        A laser-clickable panel in VR — switch status, clear pins, and toggle dictation without
+        taking the headset off. Choose a <b>dashboard tab</b>
         (open with the SteamVR system button) or an always-visible <b>wrist</b>
-        panel on a controller. <b>SteamVR only</b> (Quest Link / Air Link /
-        Virtual Desktop).
+        panel on a controller. <b>SteamVR only</b> (Quest Link / Air Link / Virtual Desktop).
       </p>
       <label className="chk">
         <input
@@ -377,9 +402,9 @@ export function VrOverlayPanel(props: { settings: AppSettings; onPersist: Persis
       {(cfg.mode ?? 'dashboard') === 'wrist' && (
         <div className="quest-note mt" style={{ opacity: cfg.enabled ? 1 : 0.5 }}>
           <p className="small muted">
-            Floats on your chosen controller — point at it with the{' '}
-            <b>other</b> controller and pull the trigger to click. Adjust the
-            sliders live while wearing the headset until it sits right.
+            Floats on your chosen controller — point at it with the <b>other</b> controller and pull
+            the trigger to click. Adjust the sliders live while wearing the headset until it sits
+            right.
           </p>
           <label className="row small mt">
             Attach to
@@ -435,8 +460,8 @@ export function VrOverlayPanel(props: { settings: AppSettings; onPersist: Persis
       )}
 
       <p className="small muted mt">
-        Status buttons to show (pick up to 6 — leave all unchecked to use the
-        first 6). The panel always adds <b>🧹 Clear pins</b> and <b>🎤 Dictate</b>.
+        Status buttons to show (pick up to 6 — leave all unchecked to use the first 6). The panel
+        always adds <b>🧹 Clear pins</b> and <b>🎤 Dictate</b>.
       </p>
       <div className="status-row" style={{ opacity: cfg.enabled ? 1 : 0.5 }}>
         {settings.statuses.map((s) => {
@@ -476,8 +501,8 @@ function adbHint(a: QuestAdbState | null): { tone: 'ok' | 'warn' | 'muted'; msg:
         tone: 'warn',
         msg: (
           <>
-            Quest detected but not authorized. Put the headset on and tap{' '}
-            <b>Allow USB debugging</b>, then Re-scan.
+            Quest detected but not authorized. Put the headset on and tap <b>Allow USB debugging</b>
+            , then Re-scan.
           </>
         ),
       };
@@ -486,20 +511,15 @@ function adbHint(a: QuestAdbState | null): { tone: 'ok' | 'warn' | 'muted'; msg:
         tone: 'warn',
         msg: (
           <>
-            adb is installed but sees no Quest. Enable <b>Developer Mode</b> (Meta
-            phone app), plug in the <b>Link cable</b>, then Re-scan.
+            adb is installed but sees no Quest. Enable <b>Developer Mode</b> (Meta phone app), plug
+            in the <b>Link cable</b>, then Re-scan.
           </>
         ),
       };
     case 'no-adb':
       return {
-        tone: 'warn',
-        msg: (
-          <>
-            <b>adb.exe not found.</b> Install Android <b>platform-tools</b> (~5&nbsp;MB),
-            then set its path below or drop it in your PATH.
-          </>
-        ),
+        tone: 'muted',
+        msg: 'Not set up — only needed to read the headset while SteamVR is off.',
       };
     default:
       return { tone: 'warn', msg: a.detail || 'adb error.' };
@@ -559,20 +579,23 @@ export function BatteryPanel(props: { settings: AppSettings; onPersist: Persist 
 
   const hint = adbHint(adb);
   const hintColor =
-    hint.tone === 'ok' ? 'var(--good, #5fd08a)' : hint.tone === 'warn' ? 'var(--danger)' : undefined;
+    hint.tone === 'ok'
+      ? 'var(--good, #5fd08a)'
+      : hint.tone === 'warn'
+        ? 'var(--danger)'
+        : undefined;
 
   return (
     <div className="feat">
       <h3>🔋 Battery</h3>
       <p className="small muted">
-        Shows your <b>Quest headset battery</b> (read over <b>adb</b>) plus any
-        native SteamVR devices that report battery. Falls back to the PC/laptop
-        battery otherwise.
+        Shows the battery of your <b>headset, controllers and trackers</b> from SteamVR — Quest over
+        Link or Air Link, Index, Vive, SlimeVR and more. Falls back to the PC/laptop battery when
+        nothing in VR reports one.
       </p>
       <p className="small muted">
-        ⚠ On <b>Meta Link</b>, the Quest does <b>not</b> expose battery through
-        SteamVR/OpenVR — so the headset is read straight from the device over
-        adb. <b>Controllers can&apos;t be read over Link</b> by any PC app.
+        Quest Touch controllers don&apos;t report their battery to the PC over Link, so they
+        aren&apos;t listed.
       </p>
       <label className="chk">
         <input type="checkbox" checked={on} onChange={(e) => setShow(e.target.checked)} />
@@ -595,14 +618,18 @@ export function BatteryPanel(props: { settings: AppSettings; onPersist: Persist 
             ))}
           </ul>
         ) : (
-          <div className="small muted">No battery reading yet — see adb status below.</div>
+          <div className="small muted">
+            No battery reading — start SteamVR with your headset connected.
+          </div>
         )}
       </div>
 
-      {/* Quest-over-adb status + setup guidance. */}
-      <div className="quest-note mt">
-        <div className="small" style={{ color: hintColor }}>
-          <b>Quest battery (adb):</b> {hint.msg}
+      {/* Optional: Quest headset over USB (adb). Collapsed — most people
+          never need it, since SteamVR already reports the headset. */}
+      <details className="quest-note mt" open={!!adb && adb.state !== 'no-adb'}>
+        <summary className="small">Optional: read the Quest headset over USB (adb)</summary>
+        <div className="small mt" style={{ color: hintColor }}>
+          <b>Status:</b> {hint.msg}
         </div>
         {adb && adb.state === 'no-adb' && (
           <ol className="small muted" style={{ paddingLeft: 18, marginTop: 6, lineHeight: 1.6 }}>
@@ -614,8 +641,12 @@ export function BatteryPanel(props: { settings: AppSettings; onPersist: Persist 
               Download <b>Android platform-tools</b> from
               developer.android.com/tools/releases/platform-tools, unzip it.
             </li>
-            <li>Paste the full path to that folder&apos;s <code>adb.exe</code> below.</li>
-            <li>Plug in the Link cable, put the headset on, tap <b>Allow USB debugging</b>.</li>
+            <li>
+              Paste the full path to that folder&apos;s <code>adb.exe</code> below.
+            </li>
+            <li>
+              Plug in the Link cable, put the headset on, tap <b>Allow USB debugging</b>.
+            </li>
             <li>Hit Re-scan.</li>
           </ol>
         )}
@@ -631,10 +662,10 @@ export function BatteryPanel(props: { settings: AppSettings; onPersist: Persist 
         </label>
         {diag && (
           <div className="mono small muted mt" style={{ wordBreak: 'break-all' }}>
-            probe: {diag}
+            Troubleshooting details: {diag}
           </div>
         )}
-      </div>
+      </details>
 
       <div className="row mt">
         <button className="btn ghost tiny" disabled={scanning} onClick={rescan}>
@@ -655,8 +686,8 @@ export function BatteryPanel(props: { settings: AppSettings; onPersist: Persist 
         onChange={setTemplate}
       />
       <p className="small muted mt">
-        <code>{`{devices}`}</code> lists them all (🥽/🎮/📍); <code>{`{percent}`}</code>{' '}
-        is the first device. Requires <b>Live Updates</b> + <b>SteamVR</b> running.
+        <code>{`{devices}`}</code> lists them all (🥽/🎮/📍); <code>{`{percent}`}</code> is the
+        first device. Requires <b>Live Updates</b> + <b>SteamVR</b> running.
       </p>
     </div>
   );

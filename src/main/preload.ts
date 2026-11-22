@@ -53,9 +53,6 @@ const api = {
   // ---- Phase 1 automation ----
   runAction: (a: Action): Promise<ActionResult> => ipcRenderer.invoke(IPC.RUN_ACTION, a),
   runActions: (a: Action[]): Promise<ActionResult> => ipcRenderer.invoke(IPC.RUN_ACTIONS, a),
-  runMacro: (id: string): Promise<ActionResult> => ipcRenderer.invoke(IPC.RUN_MACRO, id),
-  runTimeline: (id: string): Promise<ActionResult> => ipcRenderer.invoke(IPC.RUN_TIMELINE, id),
-  stopTimeline: (): Promise<boolean> => ipcRenderer.invoke(IPC.STOP_TIMELINE),
   switchProfile: (id: string): Promise<boolean> => ipcRenderer.invoke(IPC.SWITCH_PROFILE, id),
   setStatus: (id: string): Promise<ActionResult> => ipcRenderer.invoke(IPC.SET_STATUS, id),
   getState: (): Promise<AppState> => ipcRenderer.invoke(IPC.GET_STATE),
@@ -214,13 +211,6 @@ const api = {
     world?: string;
   }): Promise<{ ok: boolean; data?: string; error?: string }> =>
     ipcRenderer.invoke(IPC.AI_GENERATE_LINE, ctx),
-  aiPersonaReply: (ctx: {
-    state: string;
-    minutesIdle: number;
-  }): Promise<{ ok: boolean; data?: string; error?: string }> =>
-    ipcRenderer.invoke(IPC.AI_PERSONA_REPLY, ctx),
-  aiCleanupStt: (raw: string): Promise<{ ok: boolean; data?: string; error?: string }> =>
-    ipcRenderer.invoke(IPC.AI_CLEANUP_STT, raw),
 
   // ---- Auto-translate ----
   translateText: (

@@ -154,21 +154,6 @@ export function AfkPanel(props: {
         Also trigger when muted in VRChat
       </label>
       <div className="row mt">
-        <label className="interval">
-          After
-          <input
-            type="number"
-            min={1}
-            value={cfgAuto.afterMin}
-            onChange={(e) =>
-              onPersist({
-                ...settings,
-                autoResponder: { ...cfgAuto, afterMin: Math.max(1, Number(e.target.value)) },
-              })
-            }
-          />
-          min
-        </label>
         <input
           className="mini-input"
           placeholder="AFK message to send"

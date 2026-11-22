@@ -1,19 +1,12 @@
 import { EventEmitter } from 'events';
 import type { OscManager } from './osc';
 import type { SafetyGuard } from './safety';
-import type {
-  Action,
-  ActionResult,
-  AppState,
-  HistoryEntry,
-  AppSettings,
-  Timeline,
-} from '../shared/types';
+import type { Action, ActionResult, AppState, HistoryEntry, AppSettings } from '../shared/types';
 import type { PinnedItem } from '../shared/core';
 
 /**
  * The central engine (spec §6). Everything that "does something" — quick
- * phrases, hotkeys, macros, timelines, the refresh loop, auto-responder —
+ * buttons, hotkeys, voice commands, the refresh loop, auto-responder —
  * produces Action objects and hands them here. This keeps every feature
  * modular and routed through one safety-checked, state-aware path.
  *
@@ -36,7 +29,6 @@ export class ActionEngine extends EventEmitter {
 
   private state: AppState;
   private history: HistoryEntry[] = [];
-  private activeTimeline: { id: string; timer: NodeJS.Timeout | null } | null = null;
 
   constructor(
     osc: OscManager,
@@ -156,7 +148,7 @@ export class ActionEngine extends EventEmitter {
     }
   }
 
-  /** Execute a sequence (macro body), honoring delay steps. */
+  /** Execute a sequence of actions (e.g. a voice command), honoring delay steps. */
   async runSequence(actions: Action[]): Promise<ActionResult> {
     for (const a of actions) {
       if (a.kind === 'delay') {
@@ -277,18 +269,6 @@ export class ActionEngine extends EventEmitter {
         this.emit('profile', action.profileId);
         return { ok: true, describe: `Switched profile → ${action.profileId}` };
       }
-      case 'runMacro': {
-        const macro = settings.macros.find((m) => m.id === action.macroId);
-        if (!macro) return { ok: false, error: 'not-found', describe: 'Macro not found' };
-        await this.runSequence(macro.steps);
-        return { ok: true, describe: `Ran macro: ${macro.name}` };
-      }
-      case 'runTimeline': {
-        const tl = settings.timelines.find((t) => t.id === action.timelineId);
-        if (!tl) return { ok: false, error: 'not-found', describe: 'Timeline not found' };
-        this.startTimeline(tl);
-        return { ok: true, describe: `Started timeline: ${tl.name}` };
-      }
       case 'delay': {
         await new Promise((r) => setTimeout(r, Math.max(0, action.ms)));
         return { ok: true, describe: `Delay ${action.ms}ms` };
@@ -296,51 +276,6 @@ export class ActionEngine extends EventEmitter {
       default:
         return { ok: false, error: 'unknown', describe: 'Unknown action' };
     }
-  }
-
-  /** Timeline = simulated text animation via timed frame swaps (spec §8). */
-  startTimeline(tl: Timeline): void {
-    this.stopTimeline();
-    let i = 0;
-    const settings = this.getSettings();
-    const advance = async () => {
-      if (i >= tl.frames.length) {
-        if (tl.loop) {
-          i = 0;
-        } else {
-          this.stopTimeline();
-          return;
-        }
-      }
-      const frame = tl.frames[i];
-      i++;
-      if (!frame) {
-        this.stopTimeline();
-        return;
-      }
-      // Unicode-safe: substitution + clamp handled by sendChatbox.
-      const text = this.substitute(frame.text);
-      const key = `tl:${tl.id}`;
-      const gate = this.safety.check(key, undefined, 0); // timelines bypass dedupe
-      if (gate.allowed) {
-        try {
-          await this.osc.sendChatbox(text, settings.osc.sendImmediately, false);
-          this.safety.commit(key);
-        } catch {
-          /* ignore transient */
-        }
-      }
-      this.activeTimeline = {
-        id: tl.id,
-        timer: setTimeout(advance, Math.max(200, frame.holdMs)),
-      };
-    };
-    void advance();
-  }
-
-  stopTimeline(): void {
-    if (this.activeTimeline?.timer) clearTimeout(this.activeTimeline.timer);
-    this.activeTimeline = null;
   }
 
   /** Undo last (spec §11): best-effort — re-send previous text or clear. */

@@ -3,8 +3,6 @@
 import type {
   QuickPhrase,
   PhraseFolder,
-  Macro,
-  Timeline,
   DeviceProfile,
   StatusDef,
   SafetyConfig,
@@ -114,7 +112,7 @@ export interface AppSettings {
     /** Wake word that prefixes commands. Same as ai.wakeWord by convention. */
     wakeWord: string;
     /** Match table. `match` is a substring; `actions` reuse the standard
-     *  action shape (sendText / setStatus / clearChatbox / runMacro / …). */
+     *  action shape (sendText / setStatus / clearChatbox / …). */
     commands: Array<{ id: string; match: string; actions: unknown[] }>;
   };
 
@@ -205,10 +203,6 @@ export interface AppSettings {
   /** Quick-phrase library + folders. */
   phrases: QuickPhrase[];
   folders: PhraseFolder[];
-
-  /** Macro + timeline libraries. */
-  macros: Macro[];
-  timelines: Timeline[];
 
   /** Anti-spam + refresh loop. */
   safety: SafetyConfig;
@@ -420,22 +414,13 @@ export interface AppSettings {
   pillMethod?: PillMethod;
 
   /** Anthropic / Claude AI integration. Off by default — user pastes an
-   *  API key in Settings → AI to enable. Used by line generation,
-   *  persona auto-reply, STT cleanup, phrase suggestions, and voice
-   *  command. All calls go through src/main/ai.ts. */
+   *  API key in Settings → AI to enable. Used by the ✨ line generator on
+   *  Control. All calls go through src/main/ai.ts. */
   ai?: {
     enabled: boolean;
     apiKey: string;
     /** Model id. 'claude-opus-4-7' default, 'claude-haiku-4-5' for cost. */
     model: string;
-    features: {
-      generateLine: boolean;
-      personaReply: boolean;
-      cleanupStt: boolean;
-      suggestPhrase: boolean;
-      voiceCommand: boolean;
-    };
-    wakeWord: string;
     persona: string;
   };
 }
@@ -447,10 +432,6 @@ export interface MediaInfo {
   album: string;
   position?: number;
   duration?: number;
-  /** Base64-encoded PNG/JPEG of the track's thumbnail, when the media
-   *  source provides one (Spotify usually does; YouTube via browser
-   *  sometimes does). Already a data-URL-ready string (no "data:" prefix). */
-  thumbnailBase64?: string;
 }
 
 export interface SystemStats {
@@ -476,6 +457,9 @@ export interface AudioStatus {
   deafened: boolean;
   /** epoch ms of last change, for transient notifications. */
   changedAt: number;
+  /** True once VRChat has sent a mute/deafen value; until then the state
+   *  above is only a default, not something VRChat reported. */
+  heard?: boolean;
 }
 
 /** A single VR device battery reading. */
@@ -579,9 +563,6 @@ export const IPC = {
   // ---- Phase 1+ automation ----
   RUN_ACTION: 'action:run',
   RUN_ACTIONS: 'action:runMany',
-  RUN_MACRO: 'macro:run',
-  RUN_TIMELINE: 'timeline:run',
-  STOP_TIMELINE: 'timeline:stop',
   SWITCH_PROFILE: 'profile:switch',
   SET_STATUS: 'status:set',
   GET_STATE: 'state:get',
@@ -633,8 +614,6 @@ export const IPC = {
   // ---- AI (Anthropic / Claude) ----
   AI_TEST: 'ai:test',
   AI_GENERATE_LINE: 'ai:generateLine',
-  AI_PERSONA_REPLY: 'ai:personaReply',
-  AI_CLEANUP_STT: 'ai:cleanupStt',
   // ---- Ported from VRCOSC: Weather ----
   WEATHER_GET: 'weather:get',
   // ---- Whisper STT (VRCOSC port) ----

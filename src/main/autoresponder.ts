@@ -70,7 +70,8 @@ export class AutoResponder {
       return;
     }
 
-    const thresholdSec = Math.max(60, cfg.afterMin * 60);
+    // Same "AFK after" threshold as the Smart AFK chatbox status.
+    const thresholdSec = this.getSettings().afk.thresholdSec;
     const afkState = await this.afkDet.poll(thresholdSec);
     const muted = this.osc.getAudioStatus().muted;
     // Muting counts only while the headset isn't being worn — in VR people

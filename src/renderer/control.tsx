@@ -56,14 +56,6 @@ export function ControlPanel(props: {
     };
   }, [flash]);
 
-  const runMacro = async (id: string, name: string) => {
-    await window.chatbox.runMacro(id);
-    flash(`Macro: ${name}`);
-  };
-  const runTimeline = async (id: string, name: string) => {
-    await window.chatbox.runTimeline(id);
-    flash(`Timeline: ${name}`);
-  };
   const switchProfile = async (id: string) => {
     await window.chatbox.switchProfile(id);
     flash('Profile switched');
@@ -153,38 +145,7 @@ export function ControlPanel(props: {
       {/* ✨ AI generator — one-click "suggest me a chatbox line". When AI
           is on, the button fires generateLine + pipes the result into the
           manual textarea (you can edit before sending) or sends directly. */}
-      {settings.ai?.enabled && settings.ai?.features?.generateLine && (
-        <AiGenerateRow settings={settings} flash={flash} />
-      )}
-
-      {/* Macros + Timelines */}
-      <div className="ctl-cols">
-        {settings.featureToggles.macros && (
-          <div>
-            <h3 className="ctl-h">Macros</h3>
-            {settings.macros.map((m) => (
-              <button key={m.id} className="run-btn" onClick={() => runMacro(m.id, m.name)}>
-                ⚙ {m.name}
-              </button>
-            ))}
-          </div>
-        )}
-        {settings.featureToggles.timelines && (
-          <div>
-            <h3 className="ctl-h">Timelines</h3>
-            {settings.timelines.map((t) => (
-              <div key={t.id} className="tl-row">
-                <button className="run-btn" onClick={() => runTimeline(t.id, t.name)}>
-                  ▶ {t.name}
-                </button>
-              </div>
-            ))}
-            <button className="btn ghost tiny" onClick={() => window.chatbox.stopTimeline()}>
-              ■ Stop
-            </button>
-          </div>
-        )}
-      </div>
+      {settings.ai?.enabled && <AiGenerateRow settings={settings} flash={flash} />}
 
       {/* Variables (spec §4) */}
       <h3 className="ctl-h">Variables</h3>

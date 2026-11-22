@@ -172,31 +172,6 @@ const DEFAULTS: AppSettings = {
     { id: 'f_greetings', name: 'Greetings', color: '#46f0c8' },
     { id: 'f_status', name: 'Status', color: '#ff8fb3' },
   ],
-  macros: [
-    {
-      id: 'm_streamer',
-      name: 'Streamer Mode',
-      steps: [
-        { kind: 'setStatus', statusId: 'streaming' },
-        { kind: 'sendText', text: '🔴 Now live!' },
-        { kind: 'delay', ms: 1500 },
-        { kind: 'setVariable', name: 'mode', value: 'streaming' },
-      ],
-    },
-  ],
-  timelines: [
-    {
-      id: 't_loading',
-      name: 'Loading…',
-      loop: true,
-      frames: [
-        { text: 'Loading', holdMs: 600 },
-        { text: 'Loading.', holdMs: 600 },
-        { text: 'Loading..', holdMs: 600 },
-        { text: 'Loading...', holdMs: 600 },
-      ],
-    },
-  ],
   safety: {
     enabled: true,
     globalRatePerSec: 3,
@@ -264,17 +239,11 @@ const DEFAULTS: AppSettings = {
   },
   autoResponder: {
     enabled: false,
-    afterMin: 5,
     onMute: false,
     message: '💤 User is currently AFK',
   },
   featureToggles: {
-    quickPhrases: true,
-    macros: true,
-    timelines: true,
     hotkeys: true,
-    refreshLoop: false,
-    autoResponder: false,
     connectionMonitor: true,
     history: true,
   },
@@ -325,14 +294,6 @@ const DEFAULTS: AppSettings = {
     enabled: false,
     apiKey: '',
     model: 'claude-opus-4-7',
-    features: {
-      generateLine: true,
-      personaReply: true,
-      cleanupStt: true,
-      suggestPhrase: true,
-      voiceCommand: true,
-    },
-    wakeWord: 'uvy',
     persona:
       'Casual, friendly, a bit playful. Likes emoji but uses them sparingly. Concise — never more than one short sentence.',
   },
@@ -597,15 +558,9 @@ export class SettingsStore {
           enabled: false,
           apiKey: '',
           model: 'claude-opus-4-7',
-          features: {} as any,
-          wakeWord: 'uvy',
           persona: '',
         }),
         ...(over.ai || {}),
-        features: {
-          ...(base.ai?.features ?? ({} as any)),
-          ...((over.ai?.features as any) || {}),
-        },
       },
     };
   }

@@ -1582,6 +1582,9 @@ body::before {
   color: var(--ok);
   border-color: rgba(56, 249, 176, 0.4);
 }
+.audio-pill.unknown {
+  color: var(--muted);
+}
 .audio-pill.muted {
   color: #ffd166;
   border-color: rgba(255, 209, 102, 0.5);
