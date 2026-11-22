@@ -135,7 +135,13 @@ test('AFK detection', async (t) => {
 
 // ---------------------------------------------------------------- battery
 test('battery devices get readable names in a stable order', () => {
-  const tracker = (serial, percent) => ({ kind: 'tracker', role: 0, serial, percent, charging: false });
+  const tracker = (serial, percent) => ({
+    kind: 'tracker',
+    role: 0,
+    serial,
+    percent,
+    charging: false,
+  });
   const roles = new Map([
     ['human://waist', 'TrackerRole_Waist'],
     ['human://left_foot', 'TrackerRole_LeftFoot'],
@@ -225,11 +231,15 @@ test('Export settings only ever replaces a previous settings export', async () =
   };
   assert.equal(await isReplaceableSettingsFile(file('new.json')), true);
   assert.equal(
-    await isReplaceableSettingsFile(file('old-export.json', JSON.stringify({ osc: {}, modules: [] }))),
+    await isReplaceableSettingsFile(
+      file('old-export.json', JSON.stringify({ osc: {}, modules: [] })),
+    ),
     true,
   );
   assert.equal(
-    await isReplaceableSettingsFile(file('package.json', JSON.stringify({ name: 'x', version: '1.0.0' }))),
+    await isReplaceableSettingsFile(
+      file('package.json', JSON.stringify({ name: 'x', version: '1.0.0' })),
+    ),
     false,
   );
   assert.equal(await isReplaceableSettingsFile(file('notes.json', 'not json')), false);
