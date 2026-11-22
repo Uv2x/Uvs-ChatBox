@@ -51,9 +51,7 @@ export interface ChatboxApi {
   testConnection(): Promise<boolean>;
   getBattery(): Promise<BatteryStatus & { diag?: string; adb?: QuestAdbState }>;
   questBatteryRescan(): Promise<BatteryStatus & { diag?: string; adb?: QuestAdbState }>;
-  getTelemetry(): Promise<OscTelemetry>;
   runAction(a: Action): Promise<ActionResult>;
-  runActions(a: Action[]): Promise<ActionResult>;
   switchProfile(id: string): Promise<boolean>;
   setStatus(id: string): Promise<ActionResult>;
   getState(): Promise<AppState>;
@@ -65,7 +63,6 @@ export interface ChatboxApi {
   onLiveUpdate(cb: (payload: LiveUpdatePayload) => void): () => void;
   onStateUpdate(cb: (s: AppState) => void): () => void;
   onConnUpdate(cb: (c: ConnStatus) => void): () => void;
-  onHotkeyFired(cb: (info: { type: string; id: string }) => void): () => void;
   onUpdateStatus(cb: (s: UpdateStatus) => void): () => void;
   // VRCOSC-ported.
   getWeather(): Promise<{
@@ -90,7 +87,6 @@ export interface ChatboxApi {
   // Whisper STT.
   whisperPushPcm(buf: ArrayBuffer): Promise<boolean>;
   whisperDownload(modelChoice: string): Promise<{ ok: boolean; path?: string; error?: string }>;
-  whisperStatus(): Promise<{ engine: 'uwp' | 'whisper'; running: boolean; cfg: unknown }>;
   onWhisperDownload(
     cb: (e: {
       event: string;
@@ -111,7 +107,6 @@ export interface ChatboxApi {
   importSettings(): Promise<{ ok: boolean; reason?: string; path?: string }>;
   setLoginItem(enabled: boolean): Promise<boolean>;
   getLoginItem(): Promise<boolean>;
-  quitApp(): Promise<boolean>;
   scheduleAdd(text: string, fireAt: number): Promise<{ ok: boolean; id?: string; reason?: string }>;
   scheduleRemove(id: string): Promise<boolean>;
   scheduleList(): Promise<Array<{ id: string; text: string; fireAt: number }>>;
@@ -140,7 +135,6 @@ export interface ChatboxApi {
   // Unpin all
   clearPin(): Promise<boolean>;
   // Toggle / remove individual pin slots
-  togglePin(key: string, text: string): Promise<boolean>;
   removePin(key: string): Promise<boolean>;
 
   // ---- AI ----

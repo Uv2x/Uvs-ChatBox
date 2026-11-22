@@ -45,13 +45,6 @@ export interface WhisperPhraseEvent {
   /** Always 0 (high) for whisper. */
   confidence: 0;
 }
-export type WhisperEvent =
-  | { event: 'ready' }
-  | WhisperPhraseEvent
-  | { event: 'error'; message: string }
-  | { event: 'fatal'; message: string }
-  | { event: 'stopped' }
-  | { event: 'progress'; bufferedSec: number };
 
 /** Target audio properties — what whisper.cpp expects on its WAV input. */
 const SR = 16000;

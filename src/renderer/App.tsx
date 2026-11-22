@@ -569,7 +569,9 @@ export function App() {
     }
   };
 
-  const charCount = Array.from(manualText).length;
+  // UTF-16 units — what VRChat's 144 limit and the textarea's maxLength count
+  // (an emoji uses 2).
+  const charCount = manualText.length;
 
   /** Render the chatbox-module bar at the top of a feature panel. Combines
    *  the on/off switch, reorder arrows, and template editor that used to
@@ -1169,8 +1171,8 @@ export function App() {
                     <div className="feat">
                       <h3>🎙️ Speech-to-Text</h3>
                       <p className="small muted">
-                        Uses Windows's built-in speech recognition. Click the 🎙️ next to "Send" to
-                        start dictation. First use may prompt for microphone permission.
+                        Dictate messages with your voice. Click the 🎙️ next to "Send" to start
+                        dictation. First use may prompt for microphone permission.
                       </p>
                       <label className="chk">
                         <input
@@ -1220,6 +1222,7 @@ export function App() {
                           </p>
                         )}
                       </div>
+                      <WhisperPanel settings={settings} onPersist={persist} flash={flash} />
                     </div>
                   )}
 
@@ -1332,9 +1335,6 @@ export function App() {
                   )}
                   {featureModule === 'clips' && (
                     <ClipsPanel settings={settings} onPersist={persist} />
-                  )}
-                  {featureModule === 'whisper' && (
-                    <WhisperPanel settings={settings} onPersist={persist} flash={flash} />
                   )}
                   {featureModule === 'battery' && (
                     <BatteryPanel settings={settings} onPersist={persist} />

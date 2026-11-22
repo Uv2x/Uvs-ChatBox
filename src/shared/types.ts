@@ -545,10 +545,8 @@ export const IPC = {
   LIVE_UPDATE: 'live:update',
   TEST_CONNECTION: 'osc:test',
   GET_BATTERY: 'vr:battery',
-  GET_TELEMETRY: 'osc:telemetry',
   // ---- Phase 1+ automation ----
   RUN_ACTION: 'action:run',
-  RUN_ACTIONS: 'action:runMany',
   SWITCH_PROFILE: 'profile:switch',
   SET_STATUS: 'status:set',
   GET_STATE: 'state:get',
@@ -556,12 +554,9 @@ export const IPC = {
   GET_HISTORY: 'history:get',
   UNDO_LAST: 'history:undo',
   CONN_UPDATE: 'conn:update',
-  REGISTER_HOTKEYS: 'hotkeys:register',
-  UI_MODE_UPDATE: 'ui:mode',
   CHECK_UPDATE: 'update:check',
   APPLY_UPDATE: 'update:apply',
   UPDATE_STATUS: 'update:status',
-  HOTKEY_FIRED: 'hotkey:fired',
   // ---- Speech to text ----
   STT_START: 'stt:start',
   STT_STOP: 'stt:stop',
@@ -582,7 +577,6 @@ export const IPC = {
   RESET_SETTINGS: 'settings:reset',
   SET_LOGIN_ITEM: 'app:setLoginItem',
   GET_LOGIN_ITEM: 'app:getLoginItem',
-  QUIT_APP: 'app:quit',
   // ---- Global pause (stop-everything panic switch) ----
   PAUSE_GET: 'pause:get',
   PAUSE_SET: 'pause:set',
@@ -598,12 +592,9 @@ export const IPC = {
   // ---- Ported from VRCOSC: Weather ----
   WEATHER_GET: 'weather:get',
   // ---- Whisper STT (VRCOSC port) ----
-  WHISPER_START: 'whisper:start',
-  WHISPER_STOP: 'whisper:stop',
   WHISPER_PUSH_PCM: 'whisper:pushPcm',
   WHISPER_DOWNLOAD: 'whisper:download',
   WHISPER_DOWNLOAD_EVENT: 'whisper:downloadEvent',
-  WHISPER_STATUS: 'whisper:status',
   // ---- Network reachability test (Quest troubleshooting) ----
   NET_PING: 'net:ping',
   // ---- SteamVR in-headset notifications ----
@@ -620,23 +611,6 @@ export const IPC = {
   DISCORD_GET_STATUS: 'discord:getStatus',
   DISCORD_STATUS: 'discord:status', // pushed to renderer
 } as const;
-
-/** Discord presence connection state (mirrors DiscordState in main). */
-export type DiscordPresenceState =
-  | 'off'
-  | 'connecting'
-  | 'connected'
-  | 'no-client'
-  | 'invalid-id'
-  | 'error';
-
-export interface SttPhrase {
-  text: string;
-  /** UWP SpeechRecognitionResultStatus (0 = Success). */
-  status: number;
-  /** 0=High, 1=Medium, 2=Low, 3=Rejected. */
-  confidence: number;
-}
 
 export type SttPushEvent =
   | { event: 'ready'; language?: string }

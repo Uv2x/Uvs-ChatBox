@@ -55,7 +55,6 @@ import type {
 import {
   AppSettingsSchema,
   ActionSchema,
-  ActionArraySchema,
   MessageTextSchema,
   TypingSchema,
   IdSchema,
@@ -1259,12 +1258,6 @@ function registerIpc(): void {
   });
 
   // ---- Pin management ----
-  // Toggle a pin: add `text` under `key`, or remove if already pinned.
-  ipcMain.handle('pin:toggle', (_e, payload: { key: string; text: string }) => {
-    if (!payload || typeof payload.key !== 'string' || typeof payload.text !== 'string')
-      return false;
-    return engine.togglePin(payload.key, payload.text);
-  });
   // Remove a specific pin slot by key.
   ipcMain.handle('pin:remove', (_e, key: string) => {
     if (typeof key !== 'string') return false;
@@ -1325,14 +1318,9 @@ function registerIpc(): void {
     return { ...status, diag: batterySvc.vrError(), adb: batterySvc.adbState() };
   });
 
-  safeHandle(IPC.GET_TELEMETRY, null, () => osc.sampleTelemetry());
-
   // ===== Phase 1 automation handlers =====
 
   safeHandle(IPC.RUN_ACTION, ActionSchema, (action) => engine.run(action as Action));
-  safeHandle(IPC.RUN_ACTIONS, ActionArraySchema, (actions) =>
-    engine.runSequence(actions as Action[]),
-  );
 
   safeHandle(IPC.SWITCH_PROFILE, IdSchema, (profileId) => {
     applyProfile(profileId);
@@ -1344,10 +1332,6 @@ function registerIpc(): void {
   safeHandle(IPC.GET_STATE, null, () => engine.getState());
   safeHandle(IPC.GET_HISTORY, null, () => engine.getHistory());
   safeHandle(IPC.UNDO_LAST, null, () => engine.undoLast());
-  safeHandle(IPC.REGISTER_HOTKEYS, null, () => {
-    registerHotkeys();
-    return true;
-  });
 
   safeHandle(IPC.CHECK_UPDATE, null, () => checkForUpdate());
   // APPLY_UPDATE now only downloads (with progress); INSTALL_UPDATE restarts
@@ -1392,14 +1376,6 @@ function registerIpc(): void {
     } catch (e) {
       return { ok: false, error: (e as Error).message };
     }
-  });
-  safeHandle(IPC.WHISPER_STATUS, null, () => {
-    const s = store.get();
-    return {
-      engine: s.sttEngine ?? 'uwp',
-      running: s.sttEngine === 'whisper' ? whisperRec.isRunning() : false,
-      cfg: s.whisper ?? null,
-    };
   });
 
   // ---- Open a Windows Settings page via ms-settings: URI ----
@@ -1499,13 +1475,6 @@ function registerIpc(): void {
   });
   safeHandle(IPC.GET_LOGIN_ITEM, null, () => {
     return app.getLoginItemSettings().openAtLogin;
-  });
-
-  // ---- Quit handler so the renderer can trigger a real exit ----------
-  safeHandle(IPC.QUIT_APP, null, () => {
-    isQuitting = true;
-    app.quit();
-    return true;
   });
 
   // ---- Global pause (panic switch) ------------------------------------

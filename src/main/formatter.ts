@@ -80,7 +80,9 @@ function fill(template: string, values: Record<string, string>): string {
 
 /** Compact one-line string of every battery device, e.g.
  *  "🥽87% 🎮92%⚡ 🎮88% 📍64%". Icon per device kind. */
-function batteryDevicesStr(devices: { kind: string; percent: number; charging: boolean }[]): string {
+function batteryDevicesStr(
+  devices: { kind: string; percent: number; charging: boolean }[],
+): string {
   const icon = (k: string) =>
     k === 'hmd' ? '🥽' : k === 'controller' ? '🎮' : k === 'tracker' ? '📍' : '🔋';
   return devices.map((d) => `${icon(d.kind)}${d.percent}%${d.charging ? '⚡' : ''}`).join(' ');
@@ -155,7 +157,7 @@ export interface FormatInput {
    *  @deprecated prefer `pinnedTexts` — kept so older callers still work. */
   pinnedText?: string;
   /** Multi-pin cycle: each entry becomes its own chatbox line, prepended
-   *  before module lines. Renderer toggles items in/out via togglePin. */
+   *  before module lines. */
   pinnedTexts?: string[];
 }
 

@@ -13,7 +13,6 @@ import { IPC } from '../shared/types';
 import type {
   AppSettings,
   BatteryStatus,
-  OscTelemetry,
   Action,
   ActionResult,
   AppState,
@@ -46,25 +45,20 @@ const api = {
   stopLive: (): Promise<boolean> => ipcRenderer.invoke(IPC.STOP_LIVE),
   testConnection: (): Promise<boolean> => ipcRenderer.invoke(IPC.TEST_CONNECTION),
   getBattery: (): Promise<BatteryStatus & { diag?: string }> => ipcRenderer.invoke(IPC.GET_BATTERY),
-  getTelemetry: (): Promise<OscTelemetry> => ipcRenderer.invoke(IPC.GET_TELEMETRY),
 
   // ---- Phase 1 automation ----
   runAction: (a: Action): Promise<ActionResult> => ipcRenderer.invoke(IPC.RUN_ACTION, a),
-  runActions: (a: Action[]): Promise<ActionResult> => ipcRenderer.invoke(IPC.RUN_ACTIONS, a),
   switchProfile: (id: string): Promise<boolean> => ipcRenderer.invoke(IPC.SWITCH_PROFILE, id),
   setStatus: (id: string): Promise<ActionResult> => ipcRenderer.invoke(IPC.SET_STATUS, id),
   getState: (): Promise<AppState> => ipcRenderer.invoke(IPC.GET_STATE),
   getHistory: (): Promise<HistoryEntry[]> => ipcRenderer.invoke(IPC.GET_HISTORY),
   undoLast: (): Promise<ActionResult> => ipcRenderer.invoke(IPC.UNDO_LAST),
-  registerHotkeys: (): Promise<boolean> => ipcRenderer.invoke(IPC.REGISTER_HOTKEYS),
   checkUpdate: (): Promise<UpdateStatus> => ipcRenderer.invoke(IPC.CHECK_UPDATE),
   applyUpdate: (): Promise<boolean> => ipcRenderer.invoke(IPC.APPLY_UPDATE),
 
   onLiveUpdate: (cb: (p: LivePayload) => void) => sub<LivePayload>(IPC.LIVE_UPDATE, cb),
   onStateUpdate: (cb: (s: AppState) => void) => sub<AppState>(IPC.STATE_UPDATE, cb),
   onConnUpdate: (cb: (c: ConnStatus) => void) => sub<ConnStatus>(IPC.CONN_UPDATE, cb),
-  onHotkeyFired: (cb: (info: { type: string; id: string }) => void) =>
-    sub<{ type: string; id: string }>(IPC.HOTKEY_FIRED, cb),
   onUpdateStatus: (cb: (s: UpdateStatus) => void) => sub<UpdateStatus>(IPC.UPDATE_STATUS, cb),
 
   // ---- VRCOSC-ported: Weather ----
@@ -101,8 +95,6 @@ const api = {
     ipcRenderer.invoke(IPC.WHISPER_PUSH_PCM, buf),
   whisperDownload: (modelChoice: string): Promise<{ ok: boolean; path?: string; error?: string }> =>
     ipcRenderer.invoke(IPC.WHISPER_DOWNLOAD, { modelChoice }),
-  whisperStatus: (): Promise<{ engine: 'uwp' | 'whisper'; running: boolean; cfg: unknown }> =>
-    ipcRenderer.invoke(IPC.WHISPER_STATUS),
   onWhisperDownload: (
     cb: (e: {
       event: string;
@@ -145,7 +137,6 @@ const api = {
   setLoginItem: (enabled: boolean): Promise<boolean> =>
     ipcRenderer.invoke(IPC.SET_LOGIN_ITEM, enabled),
   getLoginItem: (): Promise<boolean> => ipcRenderer.invoke(IPC.GET_LOGIN_ITEM),
-  quitApp: (): Promise<boolean> => ipcRenderer.invoke(IPC.QUIT_APP),
 
   // ---- Scheduled send-later queue ----
   scheduleAdd: (
@@ -181,10 +172,6 @@ const api = {
 
   // ---- Pin/unpin manual sent message ----
   clearPin: (): Promise<boolean> => ipcRenderer.invoke('pin:clear'),
-  /** Toggle a pin slot. Adds if absent, removes if present. Resolves to
-   *  the new on/off state of the key. */
-  togglePin: (key: string, text: string): Promise<boolean> =>
-    ipcRenderer.invoke('pin:toggle', { key, text }),
   /** Remove a single pin slot by key (no-op if absent). */
   removePin: (key: string): Promise<boolean> => ipcRenderer.invoke('pin:remove', key),
 

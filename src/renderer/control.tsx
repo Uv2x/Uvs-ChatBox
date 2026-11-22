@@ -48,11 +48,9 @@ export function ControlPanel(props: {
       window.chatbox.getHistory().then(setHistory);
     });
     const offConn = window.chatbox.onConnUpdate(setConn);
-    const offHot = window.chatbox.onHotkeyFired((info) => flash(`Hotkey: ${info.type} ${info.id}`));
     return () => {
       offState();
       offConn();
-      offHot();
     };
   }, [flash]);
 

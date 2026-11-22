@@ -479,51 +479,6 @@ body::before {
   gap: 14px;
   align-items: start;
 }
-.feat-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 6px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  position: sticky;
-  top: 10px;
-}
-.feat-nav-btn {
-  display: grid;
-  grid-template-columns: 22px 1fr;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  color: var(--text);
-  text-align: left;
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-  transition:
-    background 100ms,
-    border-color 100ms;
-}
-.feat-nav-btn:hover {
-  background: rgba(255, 255, 255, 0.04);
-}
-.feat-nav-btn.on {
-  background: rgba(140, 130, 255, 0.14);
-  border-color: rgba(180, 175, 255, 0.4);
-  color: #fff;
-}
-.feat-nav-icon {
-  font-size: 16px;
-  line-height: 1;
-}
-.feat-nav-label {
-  font-weight: 600;
-  letter-spacing: 0.2px;
-}
 .feat-content {
   min-width: 0;
 } /* prevent grid blowout from long content */
@@ -533,26 +488,9 @@ body::before {
   .features-shell {
     grid-template-columns: 1fr;
   }
-  .feat-nav {
-    flex-direction: row;
-    overflow-x: auto;
-    position: static;
-  }
-  .feat-nav-btn {
-    grid-template-columns: 22px auto;
-    flex: 0 0 auto;
-  }
 }
 :root[data-compact='1'] .features-shell {
   grid-template-columns: 1fr;
-}
-:root[data-compact='1'] .feat-nav {
-  flex-direction: row;
-  overflow-x: auto;
-  position: static;
-}
-:root[data-compact='1'] .feat-nav-btn {
-  flex: 0 0 auto;
 }
 
 /* AI Personality picker — 5 preset cards in a responsive grid. Clicking
@@ -678,145 +616,8 @@ body::before {
 
 /* Daily stats dashboard. Three top-line numbers, then a tiny hourly
  * histogram and a top-phrases list. */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-top: 12px;
-}
-.stat-card {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 14px 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  text-align: center;
-}
-.stat-num {
-  font-family: 'Orbitron', sans-serif;
-  font-weight: 700;
-  font-size: 26px;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-.stat-num.small {
-  font-size: 14px;
-  line-height: 1.2;
-  padding: 6px 0;
-}
-.stat-label {
-  font-size: 10px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.stats-hourly {
-  display: grid;
-  grid-template-columns: repeat(24, 1fr);
-  gap: 2px;
-  height: 90px;
-  margin-top: 8px;
-  padding: 6px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-}
-.stats-bar {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 2px;
-  position: relative;
-}
-.stats-bar-fill {
-  width: 100%;
-  background: linear-gradient(180deg, var(--accent), var(--accent-3));
-  border-radius: 2px 2px 0 0;
-  min-height: 1px;
-  transition: height 400ms ease-out;
-}
-.stats-bar-label {
-  font-size: 8px;
-  color: var(--muted);
-  font-family: var(--font-ui);
-}
-.stats-phrases {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 6px;
-}
-.stats-phrase {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  font-size: 12px;
-}
-.stats-phrase-count {
-  color: var(--accent-2);
-  font-weight: 700;
-}
 
 /* Pomodoro timer — big countdown + phase bar when active. */
-.pom-active {
-  margin: 12px 0;
-  padding: 14px 18px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.02);
-}
-.pom-active.focus {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-}
-.pom-active.break {
-  border-color: var(--ok);
-  background: color-mix(in srgb, var(--ok) 8%, transparent);
-}
-.pom-phase {
-  font-size: 12px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  font-weight: 700;
-  color: var(--muted);
-}
-.pom-active.focus .pom-phase {
-  color: var(--accent);
-}
-.pom-active.break .pom-phase {
-  color: var(--ok);
-}
-.pom-time {
-  font-family: 'Orbitron', sans-serif;
-  font-weight: 700;
-  font-size: 44px;
-  letter-spacing: 2px;
-  line-height: 1;
-  margin: 4px 0 8px;
-}
-.pom-bar {
-  height: 6px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  overflow: hidden;
-}
-.pom-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent), var(--accent-3));
-  transition: width 1s linear;
-}
-.pom-active.break .pom-bar-fill {
-  background: linear-gradient(90deg, var(--ok), var(--accent-2));
-}
 
 /* Scheduled-send outbox UI. Compose row + a list of queued items, each
  * showing time remaining and a cancel ✕. */
@@ -897,66 +698,9 @@ body::before {
 }
 
 /* Quick-phrase filters: search bar + tag chips above the phrase grid. */
-.phrase-filters {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-.phrase-search {
-  width: 100%;
-}
-.tag-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-.tag-chip {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  padding: 3px 9px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  transition: all 100ms;
-  font-family: var(--font-ui);
-}
-.tag-chip:hover {
-  color: var(--text);
-  border-color: var(--accent-2);
-}
-.tag-chip.on {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-}
-.tag-chip.clear {
-  color: var(--danger);
-  border-color: transparent;
-}
 
 /* Per-phrase tint — left-edge accent bar + subtle bg wash when the user
  * picked a color on the phrase. Falls back to default styling otherwise. */
-.phrase-btn.tinted {
-  border-left: 3px solid var(--phrase-tint, var(--line));
-  background: color-mix(in srgb, var(--phrase-tint, transparent) 8%, var(--bg));
-}
-.phrase-btn .phrase-tags {
-  display: inline-flex;
-  gap: 3px;
-  margin-left: 6px;
-}
-.phrase-btn .phrase-tag {
-  font-size: 9px;
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--muted);
-  letter-spacing: 0.3px;
-}
 
 /* Quick-phrase cooldown indicator. Greyed-out button + sliding bar along the
  * bottom showing how much of the cooldown remains. Pure CSS; the bar's width
@@ -964,22 +708,6 @@ body::before {
 .phrase-btn {
   position: relative;
   overflow: hidden;
-}
-.phrase-btn.cooling {
-  opacity: 0.55;
-  cursor: progress;
-}
-.phrase-btn .cd-bar {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 3px;
-  width: var(--cd-pct, 0%);
-  background: linear-gradient(90deg, var(--accent), var(--accent-3));
-  box-shadow: 0 0 6px var(--accent);
-  transition: width 500ms linear;
-  pointer-events: none;
 }
 
 /* Onboarding tour modal — shown on first launch, re-openable from Settings. */
@@ -1183,106 +911,13 @@ body::before {
 }
 
 /* Mic meter in the Features panel — visual confirmation that the toggle works. */
-.mic-meter {
-  position: relative;
-  width: 100%;
-  height: 18px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.03);
-  overflow: hidden;
-}
-.mic-meter-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #4caf50, #ffeb3b 70%, #f44336);
-  border-radius: inherit;
-  transition: width 60ms linear;
-}
-.mic-meter-label {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
-  letter-spacing: 0.4px;
-}
 
 /* Smart-presence rows — one per activity kind with a status-mapping picker
  * and reorder buttons. */
-.presence-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 6px;
-}
-.presence-row {
-  display: grid;
-  grid-template-columns: 28px 1fr 160px auto;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 8px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-}
-.presence-icon {
-  font-size: 18px;
-}
-.presence-info {
-  display: flex;
-  flex-direction: column;
-}
-.presence-label {
-  font-weight: 600;
-}
-.presence-desc {
-  font-size: 11px;
-  color: var(--muted);
-}
-.presence-order {
-  display: flex;
-  gap: 4px;
-}
-.presence-order button {
-  width: 24px;
-  height: 22px;
-  padding: 0;
-  border: 1px solid var(--line);
-  background: transparent;
-  color: var(--text);
-  border-radius: 4px;
-  cursor: pointer;
-}
-.presence-order button:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
 
 /* Drag-and-drop affordances for reorderable rows (presence priority etc).
  * The grip is the visible "drag handle" indicator; the actual drag target
  * is the whole row (draggable attribute). */
-.dnd-grip {
-  color: rgba(255, 255, 255, 0.25);
-  cursor: grab;
-  user-select: none;
-  font-size: 12px;
-  letter-spacing: -2px;
-  padding-right: 4px;
-}
-.presence-row {
-  cursor: grab;
-}
-.presence-row.dragging {
-  opacity: 0.5;
-  cursor: grabbing;
-}
-.presence-row.drag-over {
-  border-color: var(--accent);
-  box-shadow: inset 0 2px 0 var(--accent);
-}
 
 /* Mic / dictation button next to Send. Visually distinct from the primary
  * button — pulses red while listening, dims while starting. */
@@ -1321,26 +956,6 @@ body::before {
 }
 
 /* SteamVR connection pill (next to the Battery panel title). */
-.vr-pill {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.4px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--muted);
-}
-.vr-pill.on {
-  color: #6dffb1;
-  border-color: #1d6a44;
-  background: rgba(60, 240, 150, 0.08);
-}
-.vr-pill.off {
-  color: #ff8b8b;
-  border-color: #5a2a2a;
-  background: rgba(240, 100, 100, 0.06);
-}
 
 /* ---------- preview (default flat panel) ---------- */
 .preview {
@@ -1375,15 +990,6 @@ body::before {
 }
 .module.active {
   border-color: var(--accent-3);
-}
-.module-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.module-name {
-  flex: 1;
-  font-size: 13px;
 }
 .order-btns {
   display: flex;
@@ -1839,43 +1445,6 @@ body::before {
 .battery {
   width: 100%;
 }
-.bat-list {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  margin-top: 10px;
-}
-.bat-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.bat-name {
-  font-size: 12px;
-  width: 110px;
-  color: var(--text);
-}
-.bat-bar {
-  flex: 1;
-  height: 9px;
-  background: var(--line);
-  border-radius: 5px;
-  overflow: hidden;
-}
-.bat-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--ok), var(--accent-2));
-  transition: width 0.4s;
-}
-.bat-fill.low {
-  background: linear-gradient(90deg, var(--danger), #ffd166);
-}
-.bat-pct {
-  font-size: 11px;
-  color: var(--muted);
-  width: 54px;
-  text-align: right;
-}
 
 .btn.tiny {
   padding: 5px 9px;
@@ -2138,12 +1707,6 @@ body::before {
   color: #fff;
   box-shadow: var(--glow);
 }
-
-.phrase-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-  gap: 7px;
-}
 .phrase-btn {
   position: relative;
   padding: 12px 10px;
@@ -2160,47 +1723,12 @@ body::before {
   border-color: var(--accent-2);
   transform: translateY(-1px);
 }
-.phrase-btn.fav {
-  border-color: rgba(255, 209, 102, 0.4);
-}
-.phrase-btn .star {
-  color: #ffd166;
-  margin-right: 4px;
-}
 .phrase-btn .use {
   position: absolute;
   top: 3px;
   right: 5px;
   font-size: 9px;
   color: var(--muted);
-}
-
-.ctl-cols {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-.run-btn {
-  display: block;
-  width: 100%;
-  text-align: left;
-  margin-bottom: 6px;
-  padding: 9px 11px;
-  border-radius: 8px;
-  cursor: pointer;
-  background: var(--bg);
-  border: 1px solid var(--line);
-  color: var(--text);
-  font-family: var(--font-ui);
-  font-size: 12px;
-  transition: all 0.15s;
-}
-.run-btn:hover {
-  border-color: var(--accent-3);
-}
-.tl-row {
-  display: flex;
-  gap: 4px;
 }
 
 .var-row {
@@ -2398,7 +1926,6 @@ body::before {
    mirror inside the headset (overlay layout variant). */
 :root[data-mode='vr'] .phrase-btn,
 :root[data-mode='vr'] .status-btn,
-:root[data-mode='vr'] .run-btn,
 :root[data-mode='vr'] .btn {
   font-size: 15px;
   padding: 14px 16px;
@@ -2426,50 +1953,10 @@ body::before {
 }
 
 /* ============ Phase 2: Builders / editors ============ */
-.build-tab {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
 .editor {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-.edit-card {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px;
-  background: var(--bg);
-}
-.edit-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.action-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 8px;
-  padding-left: 6px;
-  border-left: 2px solid var(--line);
-}
-.action-line {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.action-edit {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
-  flex-wrap: wrap;
-}
-.action-edit .mini-input {
-  margin-top: 0;
 }
 .grow {
   flex: 1;
@@ -2478,42 +1965,9 @@ body::before {
 .tiny-num {
   max-width: 70px;
 }
-.step-num {
-  font-size: 10px;
-  color: var(--muted);
-  width: 16px;
-  text-align: center;
-}
-.star-btn {
-  background: none;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  color: var(--muted);
-  cursor: pointer;
-  width: 28px;
-  height: 28px;
-}
-.star-btn.on {
-  color: #ffd166;
-  border-color: rgba(255, 209, 102, 0.5);
-}
-.danger-btn:hover {
-  color: var(--danger);
-  border-color: var(--danger);
-}
 .btn.primary.tiny {
   padding: 5px 10px;
   font-size: 11px;
-}
-.hk-capture {
-  display: inline-flex;
-  gap: 4px;
-  align-items: center;
-}
-.btn.capturing {
-  border-color: var(--accent);
-  color: var(--accent);
-  animation: blink 1s infinite;
 }
 
 /* ============ Phase 4: Settings panel ============ */
@@ -2605,29 +2059,6 @@ body::before {
 }
 
 /* ============ Phase 4: length validation badges ============ */
-.text-with-count {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
-}
-.text-with-count.grow {
-  flex: 1;
-}
-.len-badge {
-  font-size: 10px;
-  color: var(--muted);
-  white-space: nowrap;
-  padding: 2px 6px;
-  border-radius: 10px;
-  border: 1px solid var(--line);
-  font-variant-numeric: tabular-nums;
-}
-.len-badge.over {
-  color: #fff;
-  background: var(--danger);
-  border-color: var(--danger);
-}
 
 /* === Panic / Stop Everything button ============================= */
 .panic-btn {
@@ -2678,76 +2109,6 @@ body::before {
 }
 
 /* === Phrase chain panel ========================================== */
-.chain-panel {
-  margin-top: 16px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--line, #2a2632);
-  border-radius: 10px;
-}
-.chain-builder {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-top: 8px;
-}
-.chain-list {
-  list-style: none;
-  margin: 10px 0 8px;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.chain-slot {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 6px;
-}
-.chain-slot.delay {
-  background: rgba(70, 240, 200, 0.08);
-}
-.chain-slot.phrase {
-  background: rgba(146, 142, 232, 0.1);
-}
-.chain-step {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 50%;
-  font-size: 11px;
-  font-weight: 700;
-  flex: 0 0 22px;
-}
-.chain-text {
-  flex: 1;
-}
-.chain-row-ctrl {
-  display: flex;
-  gap: 4px;
-}
-.chain-row-ctrl button {
-  background: transparent;
-  border: 1px solid var(--line, #2a2632);
-  color: inherit;
-  padding: 2px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.chain-row-ctrl button.danger-btn:hover {
-  background: rgba(255, 93, 108, 0.18);
-}
-.chain-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 6px;
-}
 
 /* === Settings backups list ====================================== */
 .bk-list {
@@ -2927,73 +2288,14 @@ body::before {
 }
 
 /* === Save button in the tab bar ================================= */
-.tab.save-tab {
-  margin-left: auto;
-  background: linear-gradient(135deg, #46f0c8, #0d8c70);
-  color: #06140f;
-  font-weight: 700;
-  border: 0;
-}
-.tab.save-tab:hover {
-  filter: brightness(1.08);
-}
-.tab.save-tab:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
 
 /* === Easter Egg morphing shell ================================== */
-.morph-shell {
-  --ee-accent: #928ee8;
-  /* The shape (border-radius, background, box-shadow, opacity) is fully
-     driven by inline style from EasterEggMode.shape — see easterEgg.tsx.
-     Static layout-only styles below. */
-  display: block;
-  position: relative;
-  overflow: hidden;
-}
 /* The wrapped textarea should be transparent inside so the shell's
    background shows through (and the morph is visible). */
-.msg-input-shell .msg-input {
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  outline: none;
-  width: 100%;
-}
 /* Default-mode pill polish — gives the textarea a sensible square look
    when no easter egg is active. */
-.morph-shell[data-ee-mode='default'] {
-  padding: 2px;
-}
-.morph-shell[data-ee-mode='uv-pill'] {
-  padding: 12px 22px;
-}
-.morph-shell[data-ee-mode='neon-magenta'] {
-  padding: 8px 12px;
-}
-.morph-shell[data-ee-mode='ghost'] {
-  padding: 10px 14px;
-}
-.morph-shell[data-ee-mode='cyber-square'] {
-  padding: 8px 12px;
-}
 
 /* Indicator chip in the top-right — appears only when an egg is active. */
-.ee-indicator {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
-  background: color-mix(in srgb, var(--ee-accent, #928ee8) 22%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ee-accent, #928ee8) 55%, transparent);
-  color: #fff;
-  box-shadow: 0 0 12px color-mix(in srgb, var(--ee-accent, #928ee8) 50%, transparent);
-  animation: ee-fade-in 280ms ease;
-}
 @keyframes ee-fade-in {
   from {
     opacity: 0;
@@ -3083,7 +2385,6 @@ body::before {
 
 /* ---- VRCOSC-ported panels ---- */
 .vc-list,
-.dolly-list,
 .clip-list {
   display: flex;
   flex-direction: column;
@@ -3091,21 +2392,11 @@ body::before {
   margin-top: 6px;
 }
 .vc-row,
-.dolly-row,
 .clip-row {
   background: var(--panel-2, rgba(255, 255, 255, 0.04));
   border: 1px solid var(--line, rgba(255, 255, 255, 0.08));
   border-radius: 6px;
   padding: 8px;
-}
-.dolly-num {
-  display: flex;
-  flex-direction: column;
-  font-size: 11px;
-  flex: 1;
-}
-.dolly-num input {
-  width: 100%;
 }
 .svr-status .kv {
   list-style: none;
@@ -3200,17 +2491,11 @@ body::before {
 }
 
 /* Avatar parameter board + scheduled status rows. */
-.ac-list, .ss-list {
+.ss-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin-top: 6px;
-}
-.ac-row {
-  background: var(--panel-2, rgba(255,255,255,0.04));
-  border: 1px solid var(--line, rgba(255,255,255,0.08));
-  border-radius: 6px;
-  padding: 8px;
 }
 .ss-row {
   align-items: center;
@@ -3218,31 +2503,6 @@ body::before {
 }
 
 /* OSC parameter dashboard table. */
-.osc-dash {
-  margin-top: 8px;
-  max-height: 340px;
-  overflow-y: auto;
-  border: 1px solid var(--line, rgba(255,255,255,0.08));
-  border-radius: 6px;
-}
-.osc-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-.osc-table th, .osc-table td {
-  text-align: left;
-  padding: 4px 8px;
-  border-bottom: 1px solid var(--line, rgba(255,255,255,0.06));
-}
-.osc-table th {
-  position: sticky;
-  top: 0;
-  background: var(--panel, #1a1a1a);
-  color: var(--muted);
-  font-weight: 600;
-}
-.osc-table .mono { font-family: ui-monospace, monospace; }
 
 /* Now-Playing progress bar live preview (Spotify panel). */
 .bar-preview {
@@ -3291,8 +2551,7 @@ body::before {
 code,
 .endpoint,
 .counter,
-.bar-preview,
-.osc-table .mono {
+.bar-preview {
   font-family: var(--font-mono);
   font-size: 12px;
 }
@@ -3526,24 +2785,6 @@ input[type='range'] {
 }
 
 /* ---- feature rail ---- */
-.feat-nav-btn {
-  font-family: var(--font-ui);
-  font-weight: 600;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  transition:
-    background 0.15s,
-    border-color 0.15s;
-}
-.feat-nav-btn:hover {
-  background: var(--elev);
-}
-.feat-nav-btn.on {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
-  color: var(--text);
-  box-shadow: none;
-}
 
 /* ---- status chips ---- */
 .status-btn {
@@ -3600,9 +2841,7 @@ input[type='range'] {
 
 /* ---- cards used by newer panels ---- */
 .vc-row,
-.dolly-row,
 .clip-row,
-.ac-row,
 .manual-pin-row,
 .pin-cycle-row {
   background: var(--elev);
@@ -3715,9 +2954,7 @@ body::before {
   box-shadow: none;
 }
 .vc-row,
-.dolly-row,
 .clip-row,
-.ac-row,
 .manual-pin-row,
 .pin-cycle-row,
 .afk-live {
@@ -3837,22 +3074,6 @@ body::before {
 }
 
 /* ---- feature rail: sidebar-style items ---- */
-.feat-nav-btn {
-  border-radius: 12px;
-  border: 1px solid transparent;
-  font-weight: 500;
-  color: var(--muted);
-}
-.feat-nav-btn:hover {
-  background: color-mix(in srgb, var(--text) 4%, transparent);
-  color: var(--text);
-}
-.feat-nav-btn.on {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
-  color: var(--text);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 12%, transparent);
-}
 
 /* ---- status chips ---- */
 .status-btn {
@@ -4262,7 +3483,6 @@ textarea:focus,
 .saved-msg-text:hover {
   color: var(--accent-2);
 }
-.saved-msg-send,
 .saved-msg-del {
   flex-shrink: 0;
 }

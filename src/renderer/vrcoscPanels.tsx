@@ -331,28 +331,24 @@ export function WhisperPanel(props: {
       : 0;
 
   return (
-    <div className="feat">
-      <h3>
-        🎙️ Whisper STT <span className="muted small">(VRCOSC port)</span>
-      </h3>
+    <div className="mt">
+      <h4>Recognition engine</h4>
       <p className="small muted">
-        Offline speech-to-text using whisper.cpp. Replaces the legacy Windows UWP recognizer when
-        selected. Requires a whisper.cpp binary and a GGML model file (downloadable below).
+        <b>Windows</b> works out of the box. <b>Whisper</b> runs offline and is usually more
+        accurate, but needs the whisper.cpp program and a model file (download below).
       </p>
-
-      <h4 className="mt">Engine</h4>
       <div className="seg">
         <button
           className={`seg-btn ${engine === 'uwp' ? 'on' : ''}`}
           onClick={() => saveEngine('uwp')}
         >
-          UWP (default)
+          Windows (default)
         </button>
         <button
           className={`seg-btn ${engine === 'whisper' ? 'on' : ''}`}
           onClick={() => saveEngine('whisper')}
         >
-          Whisper
+          Whisper (offline)
         </button>
       </div>
 

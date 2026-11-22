@@ -65,8 +65,6 @@ export const ActionSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('delay'), ms: z.number().int().min(0).max(60_000) }),
 ]);
 
-export const ActionArraySchema = z.array(ActionSchema).max(256);
-
 export const MessageTextSchema = z.string().max(4096);
 export const TypingSchema = z.boolean();
 export const IdSchema = z.string().min(1).max(128);

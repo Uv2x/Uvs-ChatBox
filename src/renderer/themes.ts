@@ -14,15 +14,27 @@ export interface Theme {
 
 export const THEMES: Theme[] = [
   {
-    id: 'obsidian', name: 'Obsidian', blurb: 'Calm dark dashboard · violet accent',
+    id: 'obsidian',
+    name: 'Obsidian',
+    blurb: 'Calm dark dashboard · violet accent',
     preview: ['#8b7fd4', '#4ade80', '#e8e6f0'],
     dark: true,
     vars: {
-      '--bg': '#12101a', '--bg-2': '#15131f', '--panel': '#1c1a26', '--panel-2': '#1e1c2a',
-      '--line': '#2a2738', '--text': '#e8e6f0', '--muted': '#8a8598',
-      '--accent': '#8b7fd4', '--accent-2': '#9d8fe0', '--accent-3': '#7a6cc8',
-      '--ok': '#4ade80', '--danger': '#f47174', '--glow': '0 0 20px rgba(139,127,212,0.25)',
-      '--app-bg': 'radial-gradient(900px 480px at 85% -10%, rgba(139,127,212,0.06), transparent 60%), #12101a',
+      '--bg': '#12101a',
+      '--bg-2': '#15131f',
+      '--panel': '#1c1a26',
+      '--panel-2': '#1e1c2a',
+      '--line': '#2a2738',
+      '--text': '#e8e6f0',
+      '--muted': '#8a8598',
+      '--accent': '#8b7fd4',
+      '--accent-2': '#9d8fe0',
+      '--accent-3': '#7a6cc8',
+      '--ok': '#4ade80',
+      '--danger': '#f47174',
+      '--glow': '0 0 20px rgba(139,127,212,0.25)',
+      '--app-bg':
+        'radial-gradient(900px 480px at 85% -10%, rgba(139,127,212,0.06), transparent 60%), #12101a',
     },
   },
   {
@@ -314,20 +326,9 @@ export const THEMES: Theme[] = [
   },
 ];
 
-export const DEFAULT_THEME_ID = 'synthwave';
-
 export function themeById(id: string): Theme {
   const found = THEMES.find((t) => t.id === id);
   if (found) return found;
   // THEMES is non-empty (defined as a const literal in this file).
   return THEMES[0] as Theme;
-}
-
-/** Apply a theme's CSS variables to :root. */
-export function applyTheme(id: string): void {
-  const theme = themeById(id);
-  const root = document.documentElement;
-  for (const [k, v] of Object.entries(theme.vars)) {
-    root.style.setProperty(k, v);
-  }
 }

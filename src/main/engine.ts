@@ -72,21 +72,6 @@ export class ActionEngine extends EventEmitter {
     }
   }
 
-  /** Toggle a pin: if a pin with this key exists, remove it; otherwise
-   *  add it with the given text. Returns true if the key is now pinned. */
-  togglePin(key: string, text: string): boolean {
-    const cur = this.state.pinnedItems ?? [];
-    const exists = cur.some((p) => p.key === key);
-    if (exists) {
-      this.setState({ pinnedItems: cur.filter((p) => p.key !== key) });
-      this.emit('request-tick');
-      return false;
-    }
-    this.setState({ pinnedItems: this.upsertPin(key, text) });
-    this.emit('request-tick');
-    return true;
-  }
-
   clearAllPins(): void {
     if ((this.state.pinnedItems?.length ?? 0) === 0) return;
     this.setState({ pinnedItems: [] });

@@ -22,7 +22,6 @@ export const FEATURE_MODULES: ReadonlyArray<FeatureMeta> = [
   { id: 'weather', label: 'Weather', icon: '🌤️' },
   { id: 'voice', label: 'Voice Commands', icon: '🗣️' },
   { id: 'clips', label: 'ChatBox Clips', icon: '🎬' },
-  { id: 'whisper', label: 'Whisper STT', icon: '🎙️' },
   { id: 'battery', label: 'Battery', icon: '🔋' },
   { id: 'session', label: 'Session Timer', icon: '⏱️' },
   { id: 'vrnotify', label: 'VR Notifications', icon: '🔔' },
