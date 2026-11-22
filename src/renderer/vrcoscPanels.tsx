@@ -68,9 +68,7 @@ export function WeatherPanel(props: {
 
   return (
     <div className="feat">
-      <h3>
-        🌤️ Weather <span className="muted small">(VRCOSC)</span>
-      </h3>
+      <h3>🌤️ Weather</h3>
       <p className="small muted">
         Drives the Weather chatbox module. Uses Open-Meteo — no API key required. Cached for 30
         minutes per query.
@@ -172,9 +170,7 @@ export function VoiceCommandsPanel(props: { settings: AppSettings; onPersist: Pe
 
   return (
     <div className="feat">
-      <h3>
-        🗣️ Voice Commands <span className="muted small">(VRCOSC)</span>
-      </h3>
+      <h3>🗣️ Voice Commands</h3>
       <p className="small muted">
         When speech-to-text is running, phrases prefixed with the wake word are matched against the
         table below; the first match's actions fire.
@@ -471,9 +467,7 @@ export function ClipsPanel(props: { settings: AppSettings; onPersist: Persist })
 
   return (
     <div className="feat">
-      <h3>
-        🎬 ChatBox Clips <span className="muted small">(VRCOSC clip system)</span>
-      </h3>
+      <h3>🎬 ChatBox Clips</h3>
       <p className="small muted">
         Each clip is a chatbox line with a priority and an optional condition. Every tick, the
         highest-priority enabled clip whose condition evaluates true is sent to the chatbox.

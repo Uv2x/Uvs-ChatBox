@@ -79,7 +79,11 @@ export function ControlPanel(props: {
           className={`conn-dot ${conn?.health ?? 'idle'}`}
           title={conn?.lastError || conn?.health}
         />
-        <span className="ctl-conn">{(conn?.health ?? 'idle').toUpperCase()}</span>
+        {(conn?.health === 'error' || conn?.health === 'reconnecting') && (
+          <span className="ctl-conn">
+            {conn.health === 'error' ? 'OSC error' : 'Reconnecting…'}
+          </span>
+        )}
         <span className="ctl-status">
           {currentStatus ? `${currentStatus.icon} ${currentStatus.label}` : '—'}
         </span>
@@ -118,11 +122,10 @@ export function ControlPanel(props: {
         )}
       </div>
 
-      {/* 🛑 Panic switch — single button that gates ALL chatbox sends at
-          the OSC layer. While ON, no subsystem can write to /chatbox/input.
-          State is mirrored from main so the tray menu and this button
-          stay in sync. Big and red on purpose — this is a "something is
-          on fire" button, not a casual toggle. */}
+      {/* Pause switch — gates ALL chatbox sends at the OSC layer. While
+          paused, no subsystem can write to /chatbox/input. State is
+          mirrored from main so the tray menu and this button stay in sync.
+          Quiet until used; loud while paused so it can't be forgotten. */}
       <button
         className={`panic-btn ${paused ? 'on' : ''}`}
         onClick={togglePaused}
@@ -132,92 +135,94 @@ export function ControlPanel(props: {
             : 'Stop every subsystem from sending to the chatbox. Tray menu has the same toggle.'
         }
       >
-        {paused
-          ? '▶ Resume Sending  (all subsystems blocked)'
-          : '🛑 Stop Everything  (panic — kills all sends)'}
+        {paused ? '▶ Resume sending — everything is paused' : '⏸ Pause all sending'}
       </button>
-
-      {/* Scheduled send-later outbox — compose now, send at a delay. */}
-      <ScheduledSendsPanel flash={flash} />
 
       {/* ✨ AI generator — one-click "suggest me a chatbox line". When AI
           is on, the button fires generateLine + pipes the result into the
           manual textarea (you can edit before sending) or sends directly. */}
       {settings.ai?.enabled && <AiGenerateRow settings={settings} flash={flash} />}
 
-      {/* Variables (spec §4) */}
-      <h3 className="ctl-h">Variables</h3>
-      <div className="var-row">
-        <input
-          className="mini-input"
-          value={varName}
-          onChange={(e) => setVarName(e.target.value)}
-          placeholder="name"
-        />
-        <input
-          className="mini-input"
-          value={varValue}
-          onChange={(e) => setVarValue(e.target.value)}
-          placeholder="value"
-        />
-        <button className="btn ghost tiny" onClick={setVariable}>
-          Set
-        </button>
-      </div>
-      {state && Object.keys(state.variables).length > 0 && (
-        <div className="var-list">
-          {Object.entries(state.variables).map(([k, v]) => (
-            <span key={k} className="var-chip">
-              {`{${k}}`}={v}
-            </span>
-          ))}
-        </div>
-      )}
+      {/* Less-used tools, collapsed so the main screen stays calm. */}
+      <details className="ctl-more">
+        <summary>More tools — scheduled sends, variables, history</summary>
+        {/* Scheduled send-later outbox — compose now, send at a delay. */}
+        <ScheduledSendsPanel flash={flash} />
 
-      {/* Live OSC parameter monitor (spec §12) */}
-      {settings.featureToggles.connectionMonitor && conn && conn.monitor.length > 0 && (
-        <>
-          <h3 className="ctl-h">OSC Monitor</h3>
-          <div className="monitor">
-            {conn.monitor.slice(0, 8).map((m, i) => (
-              <div key={i} className="mon-row">
-                <span className="mon-addr">{m.address}</span>
-                <span className="mon-val">{m.value}</span>
-              </div>
+        {/* Variables (spec §4) */}
+        <h3 className="ctl-h">Variables</h3>
+        <div className="var-row">
+          <input
+            className="mini-input"
+            value={varName}
+            onChange={(e) => setVarName(e.target.value)}
+            placeholder="name"
+          />
+          <input
+            className="mini-input"
+            value={varValue}
+            onChange={(e) => setVarValue(e.target.value)}
+            placeholder="value"
+          />
+          <button className="btn ghost tiny" onClick={setVariable}>
+            Set
+          </button>
+        </div>
+        {state && Object.keys(state.variables).length > 0 && (
+          <div className="var-list">
+            {Object.entries(state.variables).map(([k, v]) => (
+              <span key={k} className="var-chip">
+                {`{${k}}`}={v}
+              </span>
             ))}
           </div>
-        </>
-      )}
+        )}
 
-      {/* History (spec §11) */}
-      {settings.featureToggles.history && (
-        <>
-          <div className="row between">
-            <h3 className="ctl-h">History</h3>
-            <button className="btn ghost tiny" onClick={undo}>
-              ↶ Undo
-            </button>
-          </div>
-          <div className="history">
-            {history.length === 0 ? (
-              <span className="muted small">No actions yet.</span>
-            ) : (
-              history.slice(0, 12).map((h, i) => (
-                <div key={i} className={`hist-row ${h.ok ? '' : 'err'}`}>
-                  <span className="hist-time">
-                    {new Date(h.at).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit',
-                    })}
-                  </span>
-                  <span className="hist-desc">{h.describe}</span>
+        {/* Live OSC parameter monitor (spec §12) */}
+        {settings.featureToggles.connectionMonitor && conn && conn.monitor.length > 0 && (
+          <>
+            <h3 className="ctl-h">OSC Monitor</h3>
+            <div className="monitor">
+              {conn.monitor.slice(0, 8).map((m, i) => (
+                <div key={i} className="mon-row">
+                  <span className="mon-addr">{m.address}</span>
+                  <span className="mon-val">{m.value}</span>
                 </div>
-              ))
-            )}
-          </div>
-        </>
-      )}
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* History (spec §11) */}
+        {settings.featureToggles.history && (
+          <>
+            <div className="row between">
+              <h3 className="ctl-h">History</h3>
+              <button className="btn ghost tiny" onClick={undo}>
+                ↶ Undo
+              </button>
+            </div>
+            <div className="history">
+              {history.length === 0 ? (
+                <span className="muted small">No actions yet.</span>
+              ) : (
+                history.slice(0, 12).map((h, i) => (
+                  <div key={i} className={`hist-row ${h.ok ? '' : 'err'}`}>
+                    <span className="hist-time">
+                      {new Date(h.at).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                      })}
+                    </span>
+                    <span className="hist-desc">{h.describe}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        )}
+      </details>
     </div>
   );
 }

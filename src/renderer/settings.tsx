@@ -2,6 +2,33 @@ import { useEffect, useState } from 'react';
 import type { AppSettings, UiModes, UpdateStatus } from '../shared/types';
 import { orderedFeatures } from './featureList';
 
+/** Settings is split into these groups, one shown at a time. */
+const SETTINGS_GROUPS = [
+  { id: 'general', label: 'General' },
+  { id: 'chatbox', label: 'Chatbox' },
+  { id: 'background', label: 'Background' },
+  { id: 'ai', label: 'AI' },
+  { id: 'backup', label: 'Backup & Updates' },
+] as const;
+type SettingsGroup = (typeof SETTINGS_GROUPS)[number]['id'];
+
+/** One "window layout" choice instead of separate Launch Mode + Compact
+ *  switches: VR = launchMode 'vr'; Compact = desktop + compact. */
+const WINDOW_LAYOUTS = [
+  { id: 'standard', label: 'Standard', hint: 'The normal desktop window.' },
+  {
+    id: 'compact',
+    label: 'Compact',
+    hint: 'A small, dense window that stays on top — handy beside VRChat on desktop.',
+  },
+  {
+    id: 'vr',
+    label: 'VR',
+    hint: 'Bigger buttons for clicking from a VR desktop overlay. Stays on top.',
+  },
+] as const;
+type WindowLayout = (typeof WINDOW_LAYOUTS)[number]['id'];
+
 /** Reorder the Features sidebar list with up/down controls. Writes the id
  *  order to settings.featureOrder; App reads it via orderedFeatures(). */
 function FeatureOrderEditor(props: { settings: AppSettings; onPersist: (s: AppSettings) => void }) {
@@ -93,6 +120,7 @@ export function SettingsPanel(props: {
 }) {
   const { settings, onPersist, flash, onShowTour } = props;
   const [update, setUpdate] = useState<UpdateStatus | null>(null);
+  const [group, setGroup] = useState<SettingsGroup>('general');
   // Whether app.setLoginItemSettings says the app is registered to launch
   // at Windows login. We read this once on mount so the toggle reflects
   // reality (the setting isn't stored in settings.json — it's a system
@@ -139,562 +167,608 @@ export function SettingsPanel(props: {
   const setToggle = (key: string, v: boolean) =>
     onPersist({ ...settings, featureToggles: { ...settings.featureToggles, [key]: v } });
 
+  const windowLayout: WindowLayout =
+    settings.ui.launchMode === 'vr' ? 'vr' : settings.ui.compact ? 'compact' : 'standard';
+  const setWindowLayout = (l: WindowLayout) =>
+    setUi({ launchMode: l === 'vr' ? 'vr' : 'desktop', compact: l === 'compact' });
+
   return (
     <div className="settings-panel">
-      {/* Launch mode */}
-      <h3 className="ctl-h">Launch Mode</h3>
-      <div className="seg">
-        {(['desktop', 'vr'] as const).map((m) => (
+      {/* One group of settings at a time — it used to be one 9-screen page. */}
+      <div className="seg settings-groups">
+        {SETTINGS_GROUPS.map((g) => (
           <button
-            key={m}
-            className={`seg-btn ${settings.ui.launchMode === m ? 'on' : ''}`}
-            onClick={() => setUi({ launchMode: m })}
+            key={g.id}
+            className={`seg-btn ${group === g.id ? 'on' : ''}`}
+            onClick={() => setGroup(g.id)}
           >
-            {m.toUpperCase()}
+            {g.label}
           </button>
         ))}
       </div>
-      <p className="set-hint mt">
-        VR mode uses an overlay-friendly layout (large targets, always-on-top).
-      </p>
 
-      {/* Visual modes */}
-      <h3 className="ctl-h">Display Modes</h3>
-      <Toggle
-        label="Compact"
-        hint="Dense layout for in-game multitasking"
-        checked={settings.ui.compact}
-        onChange={(v) => setUi({ compact: v })}
-      />
-      <Toggle
-        label="OLED"
-        hint="Pure black, no glow"
-        checked={settings.ui.oled}
-        onChange={(v) => setUi({ oled: v })}
-      />
-      <Toggle
-        label="Acrylic blur"
-        hint="Frosted translucent panels"
-        checked={settings.ui.acrylic}
-        onChange={(v) => setUi({ acrylic: v })}
-      />
-      <Toggle
-        label="Minimal UI"
-        hint="Hide non-essential chrome"
-        checked={settings.ui.minimalUi}
-        onChange={(v) => setUi({ minimalUi: v })}
-      />
+      {group === 'general' && (
+        <>
+          {/* Window layout — one choice instead of separate Launch Mode and
+          Compact switches (both made the window stay on top). */}
+          <h3 className="ctl-h">Window Layout</h3>
+          <div className="seg">
+            {WINDOW_LAYOUTS.map((l) => (
+              <button
+                key={l.id}
+                className={`seg-btn ${windowLayout === l.id ? 'on' : ''}`}
+                onClick={() => setWindowLayout(l.id)}
+              >
+                {l.label}
+              </button>
+            ))}
+          </div>
+          <p className="set-hint mt">{WINDOW_LAYOUTS.find((l) => l.id === windowLayout)?.hint}</p>
+          <Toggle
+            label="Simple mode"
+            hint="Hides advanced features and extra panels — shows only the essentials"
+            checked={!!settings.simpleMode}
+            onChange={(v) =>
+              onPersist({ ...settings, simpleMode: v, ui: { ...settings.ui, minimalUi: v } })
+            }
+          />
 
-      {/* Auto-translate outgoing chatbox text. */}
-      <h3 className="ctl-h">Auto-translate</h3>
-      <p className="set-hint">
-        Translate every outgoing chatbox message to the target language before sending. Uses Google
-        Translate's free gateway (no API key required). Original language is auto-detected.
-      </p>
-      <Toggle
-        label="Enable auto-translate"
-        checked={!!settings.translate?.enabled}
-        onChange={(v) =>
-          onPersist({
-            ...settings,
-            translate: {
-              ...(settings.translate ?? { targetLang: 'en', mode: 'replace' as const }),
-              enabled: v,
-            },
-          })
-        }
-      />
-      {settings.translate?.enabled && (
-        <div className="row mt">
-          <label className="interval">
-            Target language
-            <select
-              className="mini-input mono"
-              value={settings.translate?.targetLang ?? 'en'}
-              onChange={(e) =>
-                onPersist({
-                  ...settings,
-                  translate: { ...settings.translate!, targetLang: e.target.value },
-                })
-              }
-              style={{ width: 130 }}
-            >
-              <option value="en">English</option>
-              <option value="ja">Japanese</option>
-              <option value="ko">Korean</option>
-              <option value="zh">Chinese</option>
-              <option value="es">Spanish</option>
-              <option value="fr">French</option>
-              <option value="de">German</option>
-              <option value="it">Italian</option>
-              <option value="pt">Portuguese</option>
-              <option value="ru">Russian</option>
-              <option value="ar">Arabic</option>
-              <option value="hi">Hindi</option>
-              <option value="tr">Turkish</option>
-              <option value="vi">Vietnamese</option>
-              <option value="th">Thai</option>
-              <option value="id">Indonesian</option>
-              <option value="nl">Dutch</option>
-              <option value="pl">Polish</option>
-            </select>
-          </label>
-          <label className="interval">
-            Mode
-            <select
-              className="mini-input"
-              value={settings.translate?.mode ?? 'replace'}
-              onChange={(e) =>
-                onPersist({
-                  ...settings,
-                  translate: {
-                    ...settings.translate!,
-                    mode: e.target.value as 'replace' | 'bilingual',
-                  },
-                })
-              }
-              style={{ width: 130 }}
-            >
-              <option value="replace">Replace (only translated)</option>
-              <option value="bilingual">Bilingual (original + translation)</option>
-            </select>
-          </label>
-        </div>
+          <h3 className="ctl-h">Look</h3>
+          <Toggle
+            label="OLED"
+            hint="Pure black, no glow"
+            checked={settings.ui.oled}
+            onChange={(v) => setUi({ oled: v })}
+          />
+          <Toggle
+            label="Acrylic blur"
+            hint="Frosted translucent panels"
+            checked={settings.ui.acrylic}
+            onChange={(v) => setUi({ acrylic: v })}
+          />
+
+          {/* Feature order — reorder the Features sidebar list. */}
+          <h3 className="ctl-h">Feature Order</h3>
+          <details className="set-details">
+            <summary className="set-hint">
+              Change the order of the Features list in the sidebar
+            </summary>
+            <FeatureOrderEditor settings={settings} onPersist={onPersist} />
+          </details>
+
+          {/* Optional panels on the Control tab */}
+          <h3 className="ctl-h">Control Tab</h3>
+          <Toggle
+            label="Show the connection monitor"
+            hint="Live list of OSC messages coming from VRChat"
+            checked={settings.featureToggles.connectionMonitor !== false}
+            onChange={(v) => setToggle('connectionMonitor', v)}
+          />
+          <Toggle
+            label="Show action history"
+            hint="Recent sends, with Undo"
+            checked={settings.featureToggles.history !== false}
+            onChange={(v) => setToggle('history', v)}
+          />
+
+          <h3 className="ctl-h">Welcome Tour</h3>
+          <div className="row">
+            <button className="btn ghost" onClick={() => onShowTour?.()}>
+              Show the welcome tour again
+            </button>
+          </div>
+        </>
       )}
 
-      {/* Simple Mode — hides advanced UI. */}
-      <h3 className="ctl-h">Simple Mode</h3>
-      <Toggle
-        label="Simple Mode"
-        hint="Hides advanced tabs and features. Show only the essentials."
-        checked={!!settings.simpleMode}
-        onChange={(v) => onPersist({ ...settings, simpleMode: v })}
-      />
+      {group === 'chatbox' && (
+        <>
+          {/* How often the live chatbox line refreshes (was under Connection). */}
+          <h3 className="ctl-h">Update Speed</h3>
+          <label className="set-num-row">
+            <span>Update the chatbox every</span>
+            <input
+              type="number"
+              min={1}
+              value={settings.updateIntervalSec}
+              onChange={(e) =>
+                onPersist({ ...settings, updateIntervalSec: Number(e.target.value) })
+              }
+            />
+            <span>seconds</span>
+          </label>
 
-      {/* Feature order — reorder the Features sidebar list. */}
-      <h3 className="ctl-h">Feature Order</h3>
-      <p className="set-hint">Reorder how features appear under the Features sidebar item.</p>
-      <FeatureOrderEditor settings={settings} onPersist={onPersist} />
-
-      {/* Background operation — tray + auto-launch. */}
-      <h3 className="ctl-h">Background Operation</h3>
-      <Toggle
-        label="Close to tray"
-        hint="Closing the window hides it; right-click the tray icon to quit"
-        checked={settings.ui.closeToTray !== false}
-        onChange={(v) => setUi({ closeToTray: v })}
-      />
-      <Toggle
-        label="Launch on Windows startup"
-        hint="Adds an entry to the Windows Run key — only works on the installed exe, not dev"
-        checked={loginItem}
-        onChange={async (v) => {
-          await window.chatbox.setLoginItem(v);
-          setLoginItem(v);
-          flash(v ? 'Will launch at login' : 'Removed from startup');
-        }}
-      />
-      <Toggle
-        label="Auto-start with VRChat"
-        hint="Starts live updates when VRChat launches and stops them when it exits — no more forgetting to press Start"
-        checked={settings.autoStartWithVrchat === true}
-        onChange={(v) => onPersist({ ...settings, autoStartWithVrchat: v })}
-      />
-
-      {/* Settings backup. Lets the user dump the entire AppSettings to JSON
-          and reload it later — useful for sharing setups or recovering
-          from a bad edit. */}
-      <h3 className="ctl-h">Onboarding</h3>
-      <div className="row">
-        <button className="btn ghost" onClick={() => onShowTour?.()}>
-          Show welcome tour
-        </button>
-      </div>
-
-      {/* External chatbox mode — lets another OSC tool (Magic Chatbox,
-          etc.) own the in-VRChat chatbox text while this app keeps doing
-          everything else (status, AI, monitoring). */}
-      <h3 className="ctl-h">External Chatbox Mode</h3>
-      <p className="set-hint">
-        Turn this ON to let <b>Magic Chatbox</b> (or any other OSC chatbox tool) own the in-VRChat
-        chatbox text display. This app will <b>stop sending</b> <code>/chatbox/input</code> entirely
-        — no more racing/overwriting between the two apps. Everything else here keeps working:
-        status tracking, AI, monitoring, hotkeys, etc.
-      </p>
-      <Toggle
-        label="Let another app own the chatbox"
-        hint="This app will stop writing /chatbox/input; Magic Chatbox can run alongside"
-        checked={!!settings.externalChatbox}
-        onChange={(v) => onPersist({ ...settings, externalChatbox: v })}
-      />
-      {settings.externalChatbox && (
-        <p className="small muted mt">
-          ✓ Chatbox sends suppressed. Open Magic Chatbox and configure it as you normally would.
-          Both apps can run at the same time.
-        </p>
-      )}
-
-      {/* Chatbox font — minimal Unicode style picker. ASCII letters get
-          mapped to small-caps or fullwidth codepoints before send. */}
-      <h3 className="ctl-h">Chatbox Font</h3>
-      <p className="set-hint">
-        Optional Unicode style applied to every outgoing chatbox line. Pick <b>Plain</b> to disable.
-        ASCII-only — emoji and punctuation pass through unchanged.
-      </p>
-      <div className="row mt">
-        <label className="interval" style={{ flex: 1 }}>
-          Style
-          <select
-            className="mini-input mono"
-            value={settings.chatboxFont ?? 'plain'}
-            onChange={(e) => onPersist({ ...settings, chatboxFont: e.target.value })}
-            style={{ width: 220 }}
-          >
-            <option value="plain">Plain (no transform)</option>
-            <option value="small-caps">sᴍᴀʟʟ ᴄᴀᴘs</option>
-            <option value="fullwidth">Fullwidth (ｗｉｄｅ)</option>
-          </select>
-        </label>
-      </div>
-      <Toggle
-        label="Text effects (*bold* _italic_ ~strike~)"
-        hint="Markdown-style markers become bold/italic/struck Unicode glyphs in the chatbox"
-        checked={!!settings.chatboxMarkdown}
-        onChange={(v) => onPersist({ ...settings, chatboxMarkdown: v })}
-      />
-
-      <h3 className="ctl-h">Settings Backup</h3>
-      <p className="set-hint">
-        Export saves your current configuration as a JSON file. Import replaces all settings with
-        the contents of a JSON file — make sure to back up first.
-      </p>
-      <div className="row">
-        <button className="btn ghost" onClick={exportNow}>
-          ⬇ Export settings
-        </button>
-        <button className="btn ghost" onClick={importNow}>
-          ⬆ Import settings
-        </button>
-      </div>
-
-      {/* Auto-snapshots. Every save writes a timestamped JSON to
-          %APPDATA%\osc-chatbox\backups\. Latest 20 are kept; older ones
-          are pruned. Pick one and click Restore to roll back without
-          having to re-import a manual export. */}
-      <BackupsList settings={settings} flash={flash} />
-
-      {/* Danger zone — factory reset. Wipes settings.json to defaults and
-          hard-resets the engine's runtime pins/status. A pre-reset backup is
-          written first (appears in the Backups list), so it's recoverable. */}
-      <h3 className="ctl-h">Danger Zone</h3>
-      <p className="set-hint">
-        Reset everything to factory defaults — every toggle, status, pin, saved message, theme, and
-        feature setting. Your current config is backed up first (see the Backups list above), so
-        this is recoverable.
-      </p>
-      <div className="row">
-        <button className="btn danger" onClick={resetAll}>
-          ⟲ Reset all settings
-        </button>
-      </div>
-
-      {/* Multi-line chatbox — secondary row cycler. The OSC chatbox honors
+          {/* Multi-line chatbox — secondary row cycler. The OSC chatbox honors
           \n as a line break in VRChat. When enabled, the live loop
           composes a second line picking from `moduleIds` round-robin every
           `intervalSec`. */}
-      <h3 className="ctl-h">Multi-line Chatbox</h3>
-      <p className="set-hint">
-        Add a second row to the chatbox that cycles through chosen modules at its own faster
-        interval — useful for showing e.g. clock or mute state alongside the slower main row.
-      </p>
-      <Toggle
-        label="Enable secondary row cycler"
-        hint="Adds a second \\n-separated line to /chatbox/input"
-        checked={!!settings.secondaryCycle?.enabled}
-        onChange={(v) =>
-          onPersist({
-            ...settings,
-            secondaryCycle: {
-              ...(settings.secondaryCycle ?? {
-                enabled: false,
-                intervalSec: 4,
-                moduleIds: ['clock'],
-              }),
-              enabled: v,
-            },
-          })
-        }
-      />
-      {settings.secondaryCycle?.enabled && (
-        <>
-          <div className="row mt">
-            <label className="interval">
-              Cycle every
-              <input
-                type="number"
-                min={2}
-                max={60}
-                className="mini-input tiny-num"
-                value={settings.secondaryCycle?.intervalSec ?? 4}
-                onChange={(e) =>
-                  onPersist({
-                    ...settings,
-                    secondaryCycle: {
-                      ...settings.secondaryCycle!,
-                      intervalSec: Math.max(2, Number(e.target.value) || 4),
-                    },
-                  })
-                }
-              />
-              s
-            </label>
-          </div>
-          <p className="set-hint">Modules to cycle through (check to include):</p>
-          <div className="row">
-            {(
-              [
-                'audiostatus',
-                'afk',
-                'media',
-                'clock',
-                'timezone',
-                'pcComponents',
-                'network',
-                'custom',
-                'vrchat',
-              ] as const
-            ).map((mid) => {
-              const enabled = settings.secondaryCycle?.moduleIds?.includes(mid) ?? false;
-              return (
-                <label key={mid} className="chk" style={{ marginRight: 12 }}>
+          <h3 className="ctl-h">Multi-line Chatbox</h3>
+          <p className="set-hint">
+            Add a second row to the chatbox that cycles through chosen modules at its own faster
+            interval — useful for showing e.g. clock or mute state alongside the slower main row.
+          </p>
+          <Toggle
+            label="Enable secondary row cycler"
+            hint="Adds a second \\n-separated line to /chatbox/input"
+            checked={!!settings.secondaryCycle?.enabled}
+            onChange={(v) =>
+              onPersist({
+                ...settings,
+                secondaryCycle: {
+                  ...(settings.secondaryCycle ?? {
+                    enabled: false,
+                    intervalSec: 4,
+                    moduleIds: ['clock'],
+                  }),
+                  enabled: v,
+                },
+              })
+            }
+          />
+          {settings.secondaryCycle?.enabled && (
+            <>
+              <div className="row mt">
+                <label className="interval">
+                  Cycle every
                   <input
-                    type="checkbox"
-                    checked={enabled}
-                    onChange={(e) => {
-                      const cur = settings.secondaryCycle?.moduleIds ?? [];
-                      const next = e.target.checked ? [...cur, mid] : cur.filter((m) => m !== mid);
+                    type="number"
+                    min={2}
+                    max={60}
+                    className="mini-input tiny-num"
+                    value={settings.secondaryCycle?.intervalSec ?? 4}
+                    onChange={(e) =>
                       onPersist({
                         ...settings,
                         secondaryCycle: {
                           ...settings.secondaryCycle!,
-                          moduleIds: next,
+                          intervalSec: Math.max(2, Number(e.target.value) || 4),
                         },
-                      });
-                    }}
+                      })
+                    }
                   />
-                  {mid}
+                  s
                 </label>
-              );
-            })}
+              </div>
+              <p className="set-hint">Modules to cycle through (check to include):</p>
+              <div className="row">
+                {(
+                  [
+                    'audiostatus',
+                    'afk',
+                    'media',
+                    'clock',
+                    'timezone',
+                    'pcComponents',
+                    'network',
+                    'custom',
+                    'vrchat',
+                  ] as const
+                ).map((mid) => {
+                  const enabled = settings.secondaryCycle?.moduleIds?.includes(mid) ?? false;
+                  return (
+                    <label key={mid} className="chk" style={{ marginRight: 12 }}>
+                      <input
+                        type="checkbox"
+                        checked={enabled}
+                        onChange={(e) => {
+                          const cur = settings.secondaryCycle?.moduleIds ?? [];
+                          const next = e.target.checked
+                            ? [...cur, mid]
+                            : cur.filter((m) => m !== mid);
+                          onPersist({
+                            ...settings,
+                            secondaryCycle: {
+                              ...settings.secondaryCycle!,
+                              moduleIds: next,
+                            },
+                          });
+                        }}
+                      />
+                      {mid}
+                    </label>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {/* Chatbox font — minimal Unicode style picker. ASCII letters get
+          mapped to small-caps or fullwidth codepoints before send. */}
+          <h3 className="ctl-h">Chatbox Font</h3>
+          <p className="set-hint">
+            Optional Unicode style applied to every outgoing chatbox line. Pick <b>Plain</b> to
+            disable. ASCII-only — emoji and punctuation pass through unchanged.
+          </p>
+          <div className="row mt">
+            <label className="interval" style={{ flex: 1 }}>
+              Style
+              <select
+                className="mini-input mono"
+                value={settings.chatboxFont ?? 'plain'}
+                onChange={(e) => onPersist({ ...settings, chatboxFont: e.target.value })}
+                style={{ width: 220 }}
+              >
+                <option value="plain">Plain (no transform)</option>
+                <option value="small-caps">sᴍᴀʟʟ ᴄᴀᴘs</option>
+                <option value="fullwidth">Fullwidth (ｗｉｄｅ)</option>
+              </select>
+            </label>
+          </div>
+          <Toggle
+            label="Text effects (*bold* _italic_ ~strike~)"
+            hint="Markdown-style markers become bold/italic/struck Unicode glyphs in the chatbox"
+            checked={!!settings.chatboxMarkdown}
+            onChange={(v) => onPersist({ ...settings, chatboxMarkdown: v })}
+          />
+
+          {/* Auto-translate outgoing chatbox text. */}
+          <h3 className="ctl-h">Auto-translate</h3>
+          <p className="set-hint">
+            Translate every outgoing chatbox message to the target language before sending. Uses
+            Google Translate's free gateway (no API key required). Original language is
+            auto-detected.
+          </p>
+          <Toggle
+            label="Enable auto-translate"
+            checked={!!settings.translate?.enabled}
+            onChange={(v) =>
+              onPersist({
+                ...settings,
+                translate: {
+                  ...(settings.translate ?? { targetLang: 'en', mode: 'replace' as const }),
+                  enabled: v,
+                },
+              })
+            }
+          />
+          {settings.translate?.enabled && (
+            <div className="row mt">
+              <label className="interval">
+                Target language
+                <select
+                  className="mini-input mono"
+                  value={settings.translate?.targetLang ?? 'en'}
+                  onChange={(e) =>
+                    onPersist({
+                      ...settings,
+                      translate: { ...settings.translate!, targetLang: e.target.value },
+                    })
+                  }
+                  style={{ width: 130 }}
+                >
+                  <option value="en">English</option>
+                  <option value="ja">Japanese</option>
+                  <option value="ko">Korean</option>
+                  <option value="zh">Chinese</option>
+                  <option value="es">Spanish</option>
+                  <option value="fr">French</option>
+                  <option value="de">German</option>
+                  <option value="it">Italian</option>
+                  <option value="pt">Portuguese</option>
+                  <option value="ru">Russian</option>
+                  <option value="ar">Arabic</option>
+                  <option value="hi">Hindi</option>
+                  <option value="tr">Turkish</option>
+                  <option value="vi">Vietnamese</option>
+                  <option value="th">Thai</option>
+                  <option value="id">Indonesian</option>
+                  <option value="nl">Dutch</option>
+                  <option value="pl">Polish</option>
+                </select>
+              </label>
+              <label className="interval">
+                Mode
+                <select
+                  className="mini-input"
+                  value={settings.translate?.mode ?? 'replace'}
+                  onChange={(e) =>
+                    onPersist({
+                      ...settings,
+                      translate: {
+                        ...settings.translate!,
+                        mode: e.target.value as 'replace' | 'bilingual',
+                      },
+                    })
+                  }
+                  style={{ width: 130 }}
+                >
+                  <option value="replace">Replace (only translated)</option>
+                  <option value="bilingual">Bilingual (original + translation)</option>
+                </select>
+              </label>
+            </div>
+          )}
+
+          {/* External chatbox mode — lets another OSC tool (Magic Chatbox,
+          etc.) own the in-VRChat chatbox text while this app keeps doing
+          everything else (status, AI, monitoring). */}
+          <h3 className="ctl-h">External Chatbox Mode</h3>
+          <p className="set-hint">
+            Turn this ON to let <b>Magic Chatbox</b> (or any other OSC chatbox tool) own the
+            in-VRChat chatbox text display. This app will <b>stop sending</b>{' '}
+            <code>/chatbox/input</code> entirely — no more racing/overwriting between the two apps.
+            Everything else here keeps working: status tracking, AI, monitoring, hotkeys, etc.
+          </p>
+          <Toggle
+            label="Let another app own the chatbox"
+            hint="This app will stop writing /chatbox/input; Magic Chatbox can run alongside"
+            checked={!!settings.externalChatbox}
+            onChange={(v) => onPersist({ ...settings, externalChatbox: v })}
+          />
+          {settings.externalChatbox && (
+            <p className="small muted mt">
+              ✓ Chatbox sends suppressed. Open Magic Chatbox and configure it as you normally would.
+              Both apps can run at the same time.
+            </p>
+          )}
+
+          {/* Anti-spam / safety */}
+          <h3 className="ctl-h">Safety &amp; Anti-Spam</h3>
+          <Toggle
+            label="Spam prevention"
+            checked={settings.safety.enabled}
+            onChange={(v) => setSafety({ enabled: v })}
+          />
+          <div className="set-num-row">
+            <label>
+              Global rate (msg/s)
+              <input
+                type="number"
+                min={1}
+                max={10}
+                value={settings.safety.globalRatePerSec}
+                onChange={(e) => setSafety({ globalRatePerSec: Number(e.target.value) })}
+              />
+            </label>
+            <label>
+              Cooldown (ms)
+              <input
+                type="number"
+                min={0}
+                step={100}
+                value={settings.safety.defaultCooldownMs}
+                onChange={(e) => setSafety({ defaultCooldownMs: Number(e.target.value) })}
+              />
+            </label>
+            <label>
+              Dedupe window (ms)
+              <input
+                type="number"
+                min={0}
+                step={100}
+                value={settings.safety.dedupeWindowMs}
+                onChange={(e) => setSafety({ dedupeWindowMs: Number(e.target.value) })}
+              />
+            </label>
           </div>
         </>
       )}
 
-      {/* VRChat log integration — toggles the output_log tailer. */}
-      <h3 className="ctl-h">VRChat Output Log</h3>
-      <p className="set-hint">
-        Reads VRChat's local output log to expose <code>{'{world}'}</code>,
-        <code>{' {instanceType}'}</code>, <code>{' {playerCount}'}</code>,
-        <code>{' {lastJoin}'}</code>, <code>{' {lastLeave}'}</code>,<code>{' {avatar}'}</code>{' '}
-        tokens you can use in any module template (and a dedicated <em>VRChat</em> module in your
-        module list). No API access — purely reads files VRChat already writes.
-      </p>
-      <Toggle
-        label="Enable VRChat log tailer"
-        hint="Watches %LOCALAPPDATA%Low\\VRChat\\VRChat\\output_log_*.txt"
-        checked={!!settings.vrchatLog?.enabled}
-        onChange={(v) =>
-          onPersist({
-            ...settings,
-            vrchatLog: { enabled: v },
-          })
-        }
-      />
-      {settings.vrchatLog?.enabled && <VrchatLogPreview />}
+      {group === 'background' && (
+        <>
+          {/* Background operation — tray + auto-launch. */}
+          <h3 className="ctl-h">Background Operation</h3>
+          <Toggle
+            label="Close to tray"
+            hint="Closing the window hides it; right-click the tray icon to quit"
+            checked={settings.ui.closeToTray !== false}
+            onChange={(v) => setUi({ closeToTray: v })}
+          />
+          <Toggle
+            label="Launch on Windows startup"
+            hint="Adds an entry to the Windows Run key — only works on the installed exe, not dev"
+            checked={loginItem}
+            onChange={async (v) => {
+              await window.chatbox.setLoginItem(v);
+              setLoginItem(v);
+              flash(v ? 'Will launch at login' : 'Removed from startup');
+            }}
+          />
+          <Toggle
+            label="Auto-start with VRChat"
+            hint="Starts live updates when VRChat launches and stops them when it exits — no more forgetting to press Start"
+            checked={settings.autoStartWithVrchat === true}
+            onChange={(v) => onPersist({ ...settings, autoStartWithVrchat: v })}
+          />
 
-      {/* ============================================================
+          {/* VRChat log integration — toggles the output_log tailer. */}
+          <h3 className="ctl-h">VRChat Output Log</h3>
+          <p className="set-hint">
+            Reads VRChat's local output log to expose <code>{'{world}'}</code>,
+            <code>{' {instanceType}'}</code>, <code>{' {playerCount}'}</code>,
+            <code>{' {lastJoin}'}</code>, <code>{' {lastLeave}'}</code>,<code>{' {avatar}'}</code>{' '}
+            tokens you can use in any module template (and a dedicated <em>VRChat</em> module in
+            your module list). No API access — purely reads files VRChat already writes.
+          </p>
+          <Toggle
+            label="Enable VRChat log tailer"
+            hint="Watches %LOCALAPPDATA%Low\\VRChat\\VRChat\\output_log_*.txt"
+            checked={!!settings.vrchatLog?.enabled}
+            onChange={(v) =>
+              onPersist({
+                ...settings,
+                vrchatLog: { enabled: v },
+              })
+            }
+          />
+          {settings.vrchatLog?.enabled && <VrchatLogPreview />}
+        </>
+      )}
+
+      {group === 'ai' && (
+        <>
+          {/* ============================================================
           AI (Anthropic / Claude) integration. OFF by default — the
           user pastes an API key and picks a model, then per-feature
           toggles control which AI features are active.
           ============================================================ */}
-      <h3 className="ctl-h">AI Assistant (Anthropic / Claude)</h3>
-      <p className="set-hint">
-        Powered by the Anthropic API. You pay per call — Haiku 4.5 is the cheap option (~$0.001 per
-        chatbox-line generation); Opus 4.7 is the smartest (~$0.005 per call). Get an API key from{' '}
-        <code>console.anthropic.com</code>. Your key is stored locally in settings.json and never
-        sent anywhere except Anthropic.
-      </p>
-      <Toggle
-        label="Enable AI integration"
-        hint="Required before any AI feature works"
-        checked={!!settings.ai?.enabled}
-        onChange={(v) =>
-          onPersist({
-            ...settings,
-            ai: { ...(settings.ai ?? aiFallback()), enabled: v },
-          })
-        }
-      />
-      {settings.ai?.enabled && (
-        <>
-          <div className="row mt">
-            <label className="interval" style={{ flex: 1 }}>
-              API key
-              <input
-                type="password"
-                className="mini-input"
-                placeholder="sk-ant-…"
-                value={settings.ai?.apiKey ?? ''}
-                onChange={(e) =>
-                  onPersist({
-                    ...settings,
-                    ai: { ...settings.ai!, apiKey: e.target.value.trim() },
-                  })
-                }
-                style={{ width: '100%' }}
-              />
-            </label>
-          </div>
-          <div className="row mt">
-            <label className="interval">
-              Model
-              <select
-                className="mini-input mono"
-                value={settings.ai?.model ?? 'claude-opus-4-7'}
-                onChange={(e) =>
-                  onPersist({
-                    ...settings,
-                    ai: { ...settings.ai!, model: e.target.value },
-                  })
-                }
-                style={{ width: 200 }}
-              >
-                <option value="claude-opus-4-7">Opus 4.7 — best, $$$</option>
-                <option value="claude-sonnet-4-6">Sonnet 4.6 — fast + smart, $$</option>
-                <option value="claude-haiku-4-5">Haiku 4.5 — cheapest, $</option>
-              </select>
-            </label>
-            <AiTestButton flash={flash} />
-          </div>
-          <div className="mt">
-            <p className="set-hint" style={{ marginBottom: 4 }}>
-              Persona / voice (sent to Claude on every call):
-            </p>
-            <textarea
-              className="mini-input"
-              rows={2}
-              value={settings.ai?.persona ?? ''}
-              onChange={(e) =>
-                onPersist({
-                  ...settings,
-                  ai: { ...settings.ai!, persona: e.target.value },
-                })
-              }
-              placeholder="Casual, friendly, lots of emoji…"
-              style={{ width: '100%', fontFamily: 'inherit' }}
-            />
-          </div>
+          <h3 className="ctl-h">AI Assistant (Anthropic / Claude)</h3>
+          <p className="set-hint">
+            Powered by the Anthropic API. You pay per call — Haiku 4.5 is the cheap option (~$0.001
+            per chatbox-line generation); Opus 4.7 is the smartest (~$0.005 per call). Get an API
+            key from <code>console.anthropic.com</code>. Your key is stored locally in settings.json
+            and never sent anywhere except Anthropic.
+          </p>
+          <Toggle
+            label="Enable AI integration"
+            hint="Required before any AI feature works"
+            checked={!!settings.ai?.enabled}
+            onChange={(v) =>
+              onPersist({
+                ...settings,
+                ai: { ...(settings.ai ?? aiFallback()), enabled: v },
+              })
+            }
+          />
+          {settings.ai?.enabled && (
+            <>
+              <div className="row mt">
+                <label className="interval" style={{ flex: 1 }}>
+                  API key
+                  <input
+                    type="password"
+                    className="mini-input"
+                    placeholder="sk-ant-…"
+                    value={settings.ai?.apiKey ?? ''}
+                    onChange={(e) =>
+                      onPersist({
+                        ...settings,
+                        ai: { ...settings.ai!, apiKey: e.target.value.trim() },
+                      })
+                    }
+                    style={{ width: '100%' }}
+                  />
+                </label>
+              </div>
+              <div className="row mt">
+                <label className="interval">
+                  Model
+                  <select
+                    className="mini-input mono"
+                    value={settings.ai?.model ?? 'claude-opus-4-7'}
+                    onChange={(e) =>
+                      onPersist({
+                        ...settings,
+                        ai: { ...settings.ai!, model: e.target.value },
+                      })
+                    }
+                    style={{ width: 200 }}
+                  >
+                    <option value="claude-opus-4-7">Opus 4.7 — best, $$$</option>
+                    <option value="claude-sonnet-4-6">Sonnet 4.6 — fast + smart, $$</option>
+                    <option value="claude-haiku-4-5">Haiku 4.5 — cheapest, $</option>
+                  </select>
+                </label>
+                <AiTestButton flash={flash} />
+              </div>
+              <div className="mt">
+                <p className="set-hint" style={{ marginBottom: 4 }}>
+                  Persona / voice (sent to Claude on every call):
+                </p>
+                <textarea
+                  className="mini-input"
+                  rows={2}
+                  value={settings.ai?.persona ?? ''}
+                  onChange={(e) =>
+                    onPersist({
+                      ...settings,
+                      ai: { ...settings.ai!, persona: e.target.value },
+                    })
+                  }
+                  placeholder="Casual, friendly, lots of emoji…"
+                  style={{ width: '100%', fontFamily: 'inherit' }}
+                />
+              </div>
+            </>
+          )}
         </>
       )}
 
-      {/* Anti-spam / safety */}
-      <h3 className="ctl-h">Safety &amp; Anti-Spam</h3>
-      <Toggle
-        label="Spam prevention"
-        checked={settings.safety.enabled}
-        onChange={(v) => setSafety({ enabled: v })}
-      />
-      <div className="set-num-row">
-        <label>
-          Global rate (msg/s)
-          <input
-            type="number"
-            min={1}
-            max={10}
-            value={settings.safety.globalRatePerSec}
-            onChange={(e) => setSafety({ globalRatePerSec: Number(e.target.value) })}
-          />
-        </label>
-        <label>
-          Cooldown (ms)
-          <input
-            type="number"
-            min={0}
-            step={100}
-            value={settings.safety.defaultCooldownMs}
-            onChange={(e) => setSafety({ defaultCooldownMs: Number(e.target.value) })}
-          />
-        </label>
-        <label>
-          Dedupe window (ms)
-          <input
-            type="number"
-            min={0}
-            step={100}
-            value={settings.safety.dedupeWindowMs}
-            onChange={(e) => setSafety({ dedupeWindowMs: Number(e.target.value) })}
-          />
-        </label>
-      </div>
-
-      {/* Optional panels on the Control tab */}
-      <h3 className="ctl-h">Control Tab</h3>
-      <Toggle
-        label="Show the connection monitor"
-        hint="Live list of OSC messages coming from VRChat"
-        checked={settings.featureToggles.connectionMonitor !== false}
-        onChange={(v) => setToggle('connectionMonitor', v)}
-      />
-      <Toggle
-        label="Show action history"
-        hint="Recent sends, with Undo"
-        checked={settings.featureToggles.history !== false}
-        onChange={(v) => setToggle('history', v)}
-      />
-
-      {/* Updater */}
-      <h3 className="ctl-h">Updates</h3>
-      <div className="updater">
-        <span className="set-hint">
-          Version {update?.currentVersion || '—'} · {updateLabel(update)}
-        </span>
-        {update?.downloading ? (
-          <div className="update-progress grow">
-            <div style={{ width: `${update.percent ?? 0}%` }} />
-          </div>
-        ) : update?.downloaded ? (
-          <button className="btn primary tiny" onClick={() => void window.chatbox.installUpdate()}>
-            Restart to update
-          </button>
-        ) : (
-          <>
-            <button
-              className="btn ghost tiny"
-              disabled={update?.checking}
-              onClick={async () => {
-                const u = await window.chatbox.checkUpdate();
-                setUpdate(u);
-                flash(
-                  u.available ? `Update v${u.latestVersion} available` : (u.error ?? 'Up to date'),
-                );
-              }}
-            >
-              Check now
-            </button>
-            {update?.available && (
+      {group === 'backup' && (
+        <>
+          {/* Updater */}
+          <h3 className="ctl-h">Updates</h3>
+          <div className="updater">
+            <span className="set-hint">
+              Version {update?.currentVersion || '—'} · {updateLabel(update)}
+            </span>
+            {update?.downloading ? (
+              <div className="update-progress grow">
+                <div style={{ width: `${update.percent ?? 0}%` }} />
+              </div>
+            ) : update?.downloaded ? (
               <button
                 className="btn primary tiny"
-                onClick={async () => {
-                  const ok = await window.chatbox.applyUpdate();
-                  if (!ok) flash('Download failed — try again');
-                }}
+                onClick={() => void window.chatbox.installUpdate()}
               >
-                Download v{update.latestVersion}
+                Restart to update
               </button>
+            ) : (
+              <>
+                <button
+                  className="btn ghost tiny"
+                  disabled={update?.checking}
+                  onClick={async () => {
+                    const u = await window.chatbox.checkUpdate();
+                    setUpdate(u);
+                    flash(
+                      u.available
+                        ? `Update v${u.latestVersion} available`
+                        : (u.error ?? 'Up to date'),
+                    );
+                  }}
+                >
+                  Check now
+                </button>
+                {update?.available && (
+                  <button
+                    className="btn primary tiny"
+                    onClick={async () => {
+                      const ok = await window.chatbox.applyUpdate();
+                      if (!ok) flash('Download failed — try again');
+                    }}
+                  >
+                    Download v{update.latestVersion}
+                  </button>
+                )}
+              </>
             )}
-          </>
-        )}
-      </div>
+          </div>
+          <h3 className="ctl-h">Settings Backup</h3>
+          <p className="set-hint">
+            Export saves your current configuration as a JSON file. Import replaces all settings
+            with the contents of a JSON file — make sure to back up first.
+          </p>
+          <div className="row">
+            <button className="btn ghost" onClick={exportNow}>
+              ⬇ Export settings
+            </button>
+            <button className="btn ghost" onClick={importNow}>
+              ⬆ Import settings
+            </button>
+          </div>
+
+          {/* Auto-snapshots. Every save writes a timestamped JSON to
+          %APPDATA%\osc-chatbox\backups\. Latest 20 are kept; older ones
+          are pruned. Pick one and click Restore to roll back without
+          having to re-import a manual export. */}
+          <BackupsList settings={settings} flash={flash} />
+
+          {/* Danger zone — factory reset. Wipes settings.json to defaults and
+          hard-resets the engine's runtime pins/status. A pre-reset backup is
+          written first (appears in the Backups list), so it's recoverable. */}
+          <h3 className="ctl-h">Danger Zone</h3>
+          <p className="set-hint">
+            Reset everything to factory defaults — every toggle, status, pin, saved message, theme,
+            and feature setting. Your current config is backed up first (see the Backups list
+            above), so this is recoverable.
+          </p>
+          <div className="row">
+            <button className="btn danger" onClick={resetAll}>
+              ⟲ Reset all settings
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

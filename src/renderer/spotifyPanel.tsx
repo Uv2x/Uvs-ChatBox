@@ -93,7 +93,7 @@ export function SpotifyPanel(props: {
 
   return (
     <div className="feat">
-      <h3>🎵 Spotify</h3>
+      <h3>🎵 Now Playing</h3>
       {renderModuleHeader('media')}
       <p className="small muted">
         Reads the currently-playing track from any app registered with Windows Media Session. Edit

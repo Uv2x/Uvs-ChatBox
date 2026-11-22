@@ -50,9 +50,9 @@ export function OnboardingTour(props: {
       body: (
         <>
           <p>
-            The <b>Features</b> tab lists every chatbox module — Spotify, Clock, PC Components, etc.
-            Each one has a toggle at the top of its panel. Enable the ones you want; reorder them
-            with ▲▼.
+            The <b>Features</b> tab lists every chatbox module — Now Playing, Clock, PC Components,
+            etc. Each one has a toggle at the top of its panel. Enable the ones you want; reorder
+            them with ▲▼.
           </p>
           <p>
             Then click <b>▶ Start Live Updates</b> on the left panel to begin broadcasting. The

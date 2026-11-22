@@ -752,22 +752,26 @@ export function App() {
             <AudioIndicator a={audio} />
             <div className={`live-badge ${live ? 'on' : ''}`}>
               <span className="dot" />
-              {live ? 'LIVE' : 'IDLE'}
+              {live ? 'LIVE' : 'NOT LIVE'}
             </div>
           </div>
         </header>
 
         <UpdateBanner />
 
-        {/* Lobby Avatar HUD */}
-        <LobbyHud
-          live={live}
-          ip={settings.osc.ip}
-          port={settings.osc.port}
-          target={settings.osc.target}
-        />
-
-        <StatusStrip afk={afk} instance={instance} />
+        {/* Connection banner + AFK/instance strip: Control tab only — the
+            status bar at the bottom already shows the address everywhere. */}
+        {tab === 'control' && (
+          <>
+            <LobbyHud
+              live={live}
+              ip={settings.osc.ip}
+              port={settings.osc.port}
+              target={settings.osc.target}
+            />
+            <StatusStrip afk={afk} instance={instance} />
+          </>
+        )}
 
         <main className={`grid ${tab === 'control' ? '' : 'single'}`}>
           {/* LEFT: manual + preview + telemetry — ONLY on the Control tab. */}
@@ -1439,28 +1443,8 @@ export function App() {
                     />
                     Play notification sound
                   </label>
-                  <label className="chk">
-                    <input
-                      type="checkbox"
-                      checked={settings.clock24h}
-                      onChange={(e) => persist({ ...settings, clock24h: e.target.checked })}
-                    />
-                    24-hour clock
-                  </label>
                 </div>
-                <div className="row between">
-                  <label className="interval">
-                    Update every
-                    <input
-                      type="number"
-                      min={1}
-                      value={settings.updateIntervalSec}
-                      onChange={(e) =>
-                        persist({ ...settings, updateIntervalSec: Number(e.target.value) })
-                      }
-                    />
-                    s
-                  </label>
+                <div className="row">
                   <button
                     className="btn ghost"
                     onClick={async () => {
@@ -1468,7 +1452,7 @@ export function App() {
                       flash('Test message sent');
                     }}
                   >
-                    Test
+                    Send test message
                   </button>
                 </div>
               </div>

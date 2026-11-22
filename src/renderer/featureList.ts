@@ -11,7 +11,7 @@ export interface FeatureMeta {
 export const FEATURE_MODULES: ReadonlyArray<FeatureMeta> = [
   { id: 'audio', label: 'Mute / Deaf Alert', icon: '🔇' },
   { id: 'afk', label: 'Smart AFK', icon: '💤' },
-  { id: 'media', label: 'Spotify', icon: '🎵' },
+  { id: 'media', label: 'Now Playing', icon: '🎵' },
   { id: 'clock', label: 'Clock', icon: '🕐' },
   { id: 'timezones', label: 'Timezones', icon: '🌍' },
   { id: 'custom', label: 'Custom Text', icon: '💭' },
